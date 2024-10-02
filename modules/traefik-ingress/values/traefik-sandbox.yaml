@@ -1,0 +1,73 @@
+traefik:
+#  globalArguments:
+# add those if you want to expose some ECS service to the traefik, also service template on ECS has to contain proper labels
+# helm chart is not supporting that as an option but we can add provider ecs here.
+#   - --providers.ecs.constraints=Label(`traefik.http.routers.dsi-gateway.entrypoints`,`public`)
+#   - --providers.ecs.clusters=dsi-sandbox-0
+#   - --providers.ecs.exposedByDefault=false
+  deployment:
+    replicas: 2
+  providers:
+    kubernetesCRD:
+      enabled: true
+      allowCrossNamespace: true
+      allowExternalNameServices: true
+      namespaces: []
+    # allow k8s ingress syntax for traefik routes
+    kubernetesIngress:
+      enabled: true
+      allowExternalNameServices: true
+      allowEmptyServices: true
+      namespaces: []
+      publishedService:
+          enabled: true
+  logs:
+    general:
+      level: DEBUG
+      format: json
+    access:
+      enabled: true
+      fields:
+        general:
+          defaultmode: keep
+          names:
+            StartUTC: drop
+            StartLocal: keep
+            RouterName: drop
+            ServiceURL: drop
+            RequestCount: drop
+            OriginDuration: keep
+            ClientUsername: drop
+        headers: 
+          defaultmode: keep
+  # https://www.revolgy.com/insights/blog/advanced-api-routing-in-eks-with-traefik-aws-loadbalancer-controller-and-external-dns
+  # make a note that traefik does not work with ELB which comes from the service defintion. Keep responding with 404 all the time on https.
+  # with current apporach ELB we can not have gRPC proxy, which means argocd cli won't woth with the url: https://argocd.staging.octolis.cloud
+  # we create ingress in our charts/traefik that's why it's working
+  service:
+    enabled: true
+    type: NodePort
+
+  # point web entrypoint nodePort
+  ports:
+    internal:
+      nodePort: "31587"
+      port: 8000
+      expose: true
+      exposedPort: 80
+    public: 
+      nodePort: "31588"
+      port: 8001
+      expose: true
+      exposedPort: 8080
+
+  # thanks that we can get ping on entrypoint web and use it later in ALB health-check
+  ingressRoute:
+    healthcheck:
+      # -- Create an IngressRoute for the healthcheck probe
+      enabled: true
+      # -- The router match rule used for the healthcheck ingressRoute
+      matchRule: PathPrefix(`/ping`)
+      # -- Specify the allowed entrypoints to use for the healthcheck ingress route, (e.g. traefik, web, websecure).
+      # By default, it's using traefik entrypoint, which is not exposed.
+      entryPoints: ["traefik", "internal", "public"]

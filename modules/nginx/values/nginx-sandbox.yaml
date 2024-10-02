@@ -1,0 +1,15 @@
+nginx:
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web
+  service:
+    type: ClusterIP
+  serverBlock: |-
+    server {
+      listen 0.0.0.0:8080;
+      location / {
+        root /app;
+      }
+    }

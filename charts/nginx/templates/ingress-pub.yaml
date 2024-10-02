@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx
+  namespace: technipfmc
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: nginx.sandbox.k8s.services.technipfmc.com
+    external-dns.alpha.kubernetes.io/target: traefik-pub-platform-poc.sandbox.k8s.services.technipfmc.com
+    traefik.ingress.kubernetes.io/router.entrypoints: public
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: nginx.sandbox.k8s.services.technipfmc.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: dsi-gateway
+            port:
+              number: 80

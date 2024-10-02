@@ -1,0 +1,10 @@
+resource "kubernetes_namespace" "main_namespace" {
+  metadata {
+    annotations = {
+      name = var.main_namespace
+    }
+
+    name = var.main_namespace
+  }
+  depends_on = [module.eks]
+}

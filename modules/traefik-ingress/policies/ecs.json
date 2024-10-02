@@ -1,0 +1,22 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "TraefikECSReadAccess",
+            "Effect": "Allow",
+            "Action": [
+                "ecs:ListClusters",
+                "ecs:DescribeClusters",
+                "ecs:ListTasks",
+                "ecs:DescribeTasks",
+                "ecs:DescribeContainerInstances",
+                "ecs:DescribeTaskDefinition",
+                "ec2:DescribeInstances",
+                "ssm:DescribeInstanceInformation"
+            ],
+            "Resource": [
+                "*"
+            ]
+        }
+    ]
+}

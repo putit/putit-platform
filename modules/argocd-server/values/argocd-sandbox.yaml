@@ -1,0 +1,56 @@
+configs:
+  cm:
+    accounts.dev: apiKey, login
+    accounts.cicd: apiKey, login
+  credentialTemplates:
+    github-enterprise-creds-1:
+      url: https://github.com/tfmcdigital
+      githubAppID: 154147
+      githubAppInstallationID: 20902038
+  repositories:
+    example-helm-charts:
+      name: platform-k8s-charts-poc
+      url: https://github.com/tfmcdigital/platform-k8s-charts-poc.git
+    traefik:
+      name: traefik
+      type: helm
+      url: https://traefik.github.io/charts
+  rbac:
+    policy.default: role:readonly
+    # policy.csv is an file containing user-defined RBAC policies and role definitions (optional).
+    # Policy rules are in the form:
+    #   p, subject, resource, action, object, effect
+    # Role definitions and bindings are in the form:
+    #   g, subject, inherited-subject
+    # See https://github.com/argoproj/argo-cd/blob/master/docs/operator-manual/rbac.md for additional information.
+    # those are quite wide, narrow them on live env.
+    policy.csv: |
+      p, role:dev, applications, *, */*, allow
+      p, role:dev, applicationsets, *, */*, allow
+      p, role:dev, projects, *, *, allow
+      p, role:dev, repositories, *, *, allow
+      p, role:dev, clusters, *, *, allow
+      p, role:dev, logs, get, *, allow
+      g, adminuser, role:admin
+      g, dev, role:dev
+      g, cicd, role:dev
+  params:
+    # disable TLS, we got it on ALB for traefik
+    server.insecure: true
+server:
+  ingress:
+    # -- Enable an ingress resource for the Argo CD server
+    enabled: true
+    https: false
+    # -- Additional ingress annotations
+    # we could use service discovery, but Load Balancer for Service does not work - give 404 all the time - NLB
+    # ELB - does not support gRPC for argocd, that is why we ended up with ALB in front of traefik but made as an Ingress not a Service.
+    # to make it wokring traefik has to have service set to nodePort
+    # rest annotations set in main.tf
+  # check if we need grpc
+  ingressGrpc:
+    enabled: true
+    isAWSALB: false
+    ingressClassName: "traefik"
+    paths:
+      - /

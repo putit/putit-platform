@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: nginx-int-service
+  namespace: technipfmc
+  annotations:
+    external-dns.alpha.kubernetes.io/hostname: nginx.service
+    external-dns.alpha.kubernetes.io/target: traefik-int-platform-poc.sandbox.k8s.services.technipfmc.com
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  ingressClassName: traefik
+  rules:
+  - host: nginx.service
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: nginx
+            port:
+              number: 80
