@@ -1,0 +1,36 @@
+# apiVersion: v1
+# kind: Pod
+# metadata:
+#   name: resource-hungry-pod
+# spec:
+#   containers:
+#   - name: busybox
+#     image: busybox:latest
+#     resources:
+#       requests:
+#         memory: "4Gi"
+#         cpu: "2"
+#   restartPolicy: Never
+
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: inflate
+spec:
+  replicas: 5
+  selector:
+    matchLabels:
+      app: inflate
+  template:
+    metadata:
+      labels:
+        app: inflate
+    spec:
+      terminationGracePeriodSeconds: 0
+      containers:
+        - name: inflate
+          image: public.ecr.aws/eks-distro/kubernetes/pause:3.7
+          resources:
+            requests:
+              cpu: 1
