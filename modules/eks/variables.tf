@@ -68,6 +68,6 @@ variable "aws_loadbalancer_controller_chart_version" {
 
 variable "aws_loadbalancer_controller_app_version" {
   type = string
-  default = "v2..4"
+  default = "v2.7.1"
   description = "Should match version for the chart."
 }
