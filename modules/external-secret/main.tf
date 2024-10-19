@@ -10,6 +10,8 @@ data "aws_iam_openid_connect_provider" "oidc_provider" {
   arn = var.cluster_oidc_provider_arn
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "helm_release" "external_secret" {
   count      = var.deploy ? 1 : 0
   name       = "external-secret"
@@ -18,19 +20,20 @@ resource "helm_release" "external_secret" {
   version    = "0.10.3"
   namespace  = "default"
 
-#   set {
-#       name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-#       value = aws_iam_role.external_secret.arn
-#   }
+  set {
+      name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+      value = aws_iam_role.external_secret.arn
+  }
 
-  values = [
-    file("values/values.yaml")
-  ]
+  set {
+      name  = "serviceAccount.name"
+      value = "external-secret"
+  }
 }
 
 
 resource "aws_iam_policy" "secrets_manager_access" {
-  name        = "SecretsManagerAccessPolicyExternalSecret${local-env}"
+  name        = "SecretsManagerAccessPolicyExternalSecret"
   description = "Policy for Secrets Manager access for Kubernetes Service Account"
   policy      = jsonencode({
     "Version": "2012-10-17",
@@ -43,14 +46,14 @@ resource "aws_iam_policy" "secrets_manager_access" {
           "secretsmanager:GetResourcePolicy",
           "secretsmanager:ListSecretVersionIds"
         ],
-        "Resource": ["arn:aws:secretsmanager:eu-west-1:336796197909:secret:${local-env}*"]
+        "Resource": ["arn:aws:secretsmanager:eu-west-1:${data.aws_caller_identity.current.account_id}:secret:*"]
       }
     ]
   })
 }
 
 resource "aws_iam_role" "external_secret" {
-  name = "external-secret-${local-env}"
+  name = "external-secret"
 
   assume_role_policy = jsonencode({
     "Version": "2012-10-17",
@@ -95,64 +98,3 @@ module "irsa_role_secrets_manager" {
     secrets_manager_access = aws_iam_policy.secrets_manager_access.arn
   }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# resource "aws_iam_policy" "secrets_manager_access" {
-#   name        = "SecretsManagerAccessPolicyExternalSecret"
-#   description = "Policy for Secrets Manager access for Kubernetes Service Account"
-#   policy      = jsonencode({
-#     "Version": "2012-10-17",
-#     "Statement": [
-#       {
-#         "Effect": "Allow",
-#         "Action": [
-#           "secretsmanager:GetSecretValue",
-#           "secretsmanager:DescribeSecret",
-#           "secretsmanager:GetResourcePolicy",
-#           "secretsmanager:ListSecretVersionIds"
-#         ],
-#         "Resource": ["arn:aws:secretsmanager:eu-west-1:336796197909:secret:staging/admin-pn2rWs"]
-#       }
-#     ]
-#   })
-# }
-
-# module "irsa_role_secrets_manager" {
-#   source  = "terraform-aws-modules/iam/aws//modules/iam-role-for-service-accounts-eks"
-#   version = "v5.34.0"
-
-#   role_name = "external-secret"
-#   create_role = true
-  
-#   force_detach_policies = false
-
-#   oidc_providers = {
-#     one = {
-#       provider_arn               = data.aws_iam_openid_connect_provider.oidc_provider.arn
-#       namespace_service_accounts = ["kube-system:external-secret-external-secrets"]
-#     }
-#   }
-
-#   role_policy_arns = {
-#     secrets_manager_access = aws_iam_policy.secrets_manager_access.arn
-#   }
-# }
-
-
