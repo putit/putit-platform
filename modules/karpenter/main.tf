@@ -165,13 +165,13 @@ resource "kubectl_manifest" "karpenter_ec2nodeclass" {
       role: self-managed-node-group-complete-example
       subnetSelectorTerms:
         - tags:
-            karpenter.sh/discovery: k8s-sandbox-sandbox
+            karpenter.sh/discovery: ${data.aws_eks_cluster.cluster.name}
       securityGroupSelectorTerms:
         - tags:
-            karpenter.sh/discovery: k8s-sandbox-sandbox
+            karpenter.sh/discovery: ${data.aws_eks_cluster.cluster.name}
   YAML
 
   depends_on = [
-    helm_release.karpenter # Ensure Karpenter is installed first
+    helm_release.karpenter
   ]
 }
