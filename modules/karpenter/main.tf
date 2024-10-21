@@ -119,3 +119,59 @@ resource "aws_iam_role_policy_attachment" "karpenter_additional" {
   policy_arn = aws_iam_policy.karpenter_additional.arn
   depends_on = [ module.karpenter ]
 }
+
+resource "kubectl_manifest" "karpenter_nodepool" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.sh/v1beta1
+    kind: NodePool
+    metadata:
+      name: default
+    spec:
+      template:
+        metadata:
+          labels:
+            type: karpenter
+        spec:
+          requirements:
+            - key: karpenter.sh/capacity-type
+              operator: In
+              values: ["on-demand"]
+            - key: "node.kubernetes.io/instance-type"
+              operator: In
+              values: ["t3.large","t3.xlarge"]
+          nodeClassRef:
+            name: default
+      limits:
+        cpu: "120"
+        memory: 120Gi
+      disruption:
+        consolidationPolicy: WhenUnderutilized
+        expireAfter: 720h # 30 * 24h = 720h
+  YAML
+
+  depends_on = [
+    helm_release.karpenter # Ensure Karpenter is installed first
+  ]
+}
+
+resource "kubectl_manifest" "karpenter_ec2nodeclass" {
+  yaml_body = <<-YAML
+    apiVersion: karpenter.k8s.aws/v1beta1
+    kind: EC2NodeClass
+    metadata:
+      name: default
+    spec:
+      amiFamily: AL2 # Amazon Linux 2
+      role: self-managed-node-group-complete-example
+      subnetSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: k8s-sandbox-sandbox
+      securityGroupSelectorTerms:
+        - tags:
+            karpenter.sh/discovery: k8s-sandbox-sandbox
+  YAML
+
+  depends_on = [
+    helm_release.karpenter # Ensure Karpenter is installed first
+  ]
+}
