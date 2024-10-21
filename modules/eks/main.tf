@@ -179,7 +179,7 @@ module "eks" {
     aws-ebs-csi-driver = {
       most_recent = true
       #addon_version = "v1.35.0-eksbuild.1"
-      #service_account_role_arn = module.irsa_role_ebs_addon.iam_role_arn
+      service_account_role_arn = module.irsa_role_ebs_addon.iam_role_arn
     }
   }
 }
