@@ -18,8 +18,8 @@ spec:
       nodeClassRef:
         name: default
   limits:
-    cpu: "1000"
-    memory: 1000Gi
+    cpu: "120"
+    memory: 120Gi
   disruption:
     consolidationPolicy: WhenUnderutilized
     expireAfter: 720h # 30 * 24h = 720h
@@ -37,5 +37,3 @@ spec:
   securityGroupSelectorTerms:
     - tags:
         karpenter.sh/discovery: k8s-sandbox-sandbox
-  tags:
-    app.kubernetes.io/created-by: eks-workshop

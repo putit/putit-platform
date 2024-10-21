@@ -34,6 +34,9 @@ module "eks" {
   eks_managed_node_group_defaults = {
     ami_type       = "AL2_x86_64"
   }
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = local.cluster_name
+  }
 
   # make the cluster creator an administrator, good enough for lab/play usage
   enable_cluster_creator_admin_permissions = true
