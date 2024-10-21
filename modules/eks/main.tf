@@ -165,21 +165,21 @@ module "eks" {
   # addons
   cluster_addons = {
     coredns = {
-      most_recent = false
-      addon_version = "v1.10.1-eksbuild.13"
+      most_recent = true
+      #addon_version = "v1.10.1-eksbuild.13"
     }
     kube-proxy = {
-      most_recent = false
-      addon_version = "v1.28.2-eksbuild.2"
+      most_recent = true
+      #addon_version = "v1.28.2-eksbuild.2"
     }
     vpc-cni = {
-      most_recent = false
-      addon_version = "v1.15.1-eksbuild.1"
+      most_recent = true
+      #addon_version = "v1.15.1-eksbuild.1"
     }
     aws-ebs-csi-driver = {
-      most_recent = false
-      addon_version = "v1.35.0-eksbuild.1"
-      service_account_role_arn = module.irsa_role_ebs_addon.iam_role_arn
+      most_recent = true
+      #addon_version = "v1.35.0-eksbuild.1"
+      #service_account_role_arn = module.irsa_role_ebs_addon.iam_role_arn
     }
   }
 }

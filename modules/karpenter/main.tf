@@ -150,7 +150,7 @@ resource "kubectl_manifest" "karpenter_nodepool" {
   YAML
 
   depends_on = [
-    helm_release.karpenter # Ensure Karpenter is installed first
+    helm_release.karpenter
   ]
 }
 
