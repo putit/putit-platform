@@ -32,7 +32,7 @@ variable "deploy_traefik" {
 variable "traefik_chart_version" {
   type        = string
   description = "Helm chart version for traefik."
-  default     = "20.8.0"
+  default     = "32.1.1"
 }
 
 variable "root_domain" {
