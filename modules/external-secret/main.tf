@@ -98,3 +98,67 @@ module "irsa_role_secrets_manager" {
     secrets_manager_access = aws_iam_policy.secrets_manager_access.arn
   }
 }
+
+provider "time" {}
+
+resource "time_sleep" "wait_for_external_secrets" {
+  depends_on = [helm_release.external_secret]
+  create_duration = "45s"
+}
+
+
+resource "kubectl_manifest" "external_secrets_secretstore" {
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1beta1
+    kind: SecretStore
+    metadata:
+      name: aws-secretsmanager
+      namespace: default
+    spec:
+      provider:
+        aws:
+          service: SecretsManager
+          region: eu-west-1
+          auth:
+            jwt:
+              serviceAccountRef:
+                name: external-secret
+  YAML
+
+  depends_on = [
+    time_sleep.wait_for_external_secrets
+  ]
+}
+
+resource "kubectl_manifest" "external_secrets_externalsecret" {
+  yaml_body = <<-YAML
+    apiVersion: external-secrets.io/v1beta1
+    kind: ExternalSecret
+    metadata:
+      name: secret
+      namespace: default
+    spec:
+      refreshInterval: 10m
+      secretStoreRef:
+        name: aws-secretsmanager
+        kind: SecretStore
+      target:
+        name: secrets-manager-secret
+        creationPolicy: Owner
+      data:
+        - secretKey: staging-admin-username
+          remoteRef:
+            key: staging/kamil3
+            property: admin
+        - secretKey: staging-admin-kamil
+          remoteRef:
+            key: staging/kamil4
+            property: admin
+  YAML
+
+  depends_on = [
+    kubectl_manifest.external_secrets_secretstore,
+    time_sleep.wait_for_external_secrets
+  ]
+}
+

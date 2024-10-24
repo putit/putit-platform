@@ -108,7 +108,7 @@ module "eks" {
       max_size     = 4
       desired_size = 2
 
-      ami_id = "ami-0f17524429ac1df59"
+      ami_id = "ami-0f3eb923c80e02952"
 
       instance_type = "t3.large"
 

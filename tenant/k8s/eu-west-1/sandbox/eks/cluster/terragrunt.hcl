@@ -23,7 +23,7 @@ inputs = {
   vpc_id              = dependency.vpc.outputs.vpc_id
   environment          = local.environment
   cluster_name_prefix = "${local.tenant}-${local.environment}"
-  cluster_version     = "1.28"
+  cluster_version     = "1.30"
   private_subnets_ids = dependency.vpc.outputs.private_subnets_ids
   public_subnets_ids = dependency.vpc.outputs.public_subnets_ids
 }
