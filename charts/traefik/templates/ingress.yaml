@@ -47,7 +47,7 @@ metadata:
     alb.ingress.kubernetes.io/backend-protocol: HTTP
     alb.ingress.kubernetes.io/certificate-arn: {{ .Values.traefik.ingress.certificate_arns }}
     alb.ingress.kubernetes.io/healthcheck-path: "/ping"
-    alb.ingress.kubernetes.io/healthcheck-port: {{ .Values.traefik.ports.public.nodePort | quote }}
+    alb.ingress.kubernetes.io/healthcheck-port: {{ .Values.traefik.ports.web.nodePort | quote }}
     alb.ingress.kubernetes.io/healthcheck-protocol: HTTP
     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP": 80}, {"HTTPS":443}]'
     alb.ingress.kubernetes.io/scheme: internet-facing

@@ -25,7 +25,7 @@ inputs = {
   cluster_name            = dependency.eks-cluster.outputs.cluster_name
   environment = local.environment 
   tenant = include.root.inputs.tenant
-  chart_version = "5.55.0"
+  chart_version = "7.6.12"
   deploy = true
   pub_ingress_hostname = dependency.traefik-ingress.outputs.pub_ingress_hostname
 }

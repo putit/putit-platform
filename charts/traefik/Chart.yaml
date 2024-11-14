@@ -3,9 +3,9 @@ apiVersion: v2
 name: traefik
 description: Helm chart for Traefik with Ingress as ALB in front of it.
 type: application
-version: 26.1.0
-appVersion: v2.11.0
+version: 32.1.1
+appVersion: v3.1.6
 dependencies:
   - name: traefik
-    version: 26.1.0
+    version: 32.1.1
     repository: https://traefik.github.io/charts
