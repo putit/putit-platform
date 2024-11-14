@@ -34,6 +34,9 @@ module "eks" {
   eks_managed_node_group_defaults = {
     ami_type       = "AL2_x86_64"
   }
+  node_security_group_tags = {
+    "karpenter.sh/discovery" = local.cluster_name
+  }
 
   # make the cluster creator an administrator, good enough for lab/play usage
   enable_cluster_creator_admin_permissions = true
@@ -105,7 +108,7 @@ module "eks" {
       max_size     = 4
       desired_size = 2
 
-      ami_id = "ami-0f17524429ac1df59"
+      ami_id = "ami-0f3eb923c80e02952"
 
       instance_type = "t3.large"
 
@@ -162,20 +165,20 @@ module "eks" {
   # addons
   cluster_addons = {
     coredns = {
-      most_recent = false
-      addon_version = "v1.10.1-eksbuild.13"
+      most_recent = true
+      #addon_version = "v1.10.1-eksbuild.13"
     }
     kube-proxy = {
-      most_recent = false
-      addon_version = "v1.28.2-eksbuild.2"
+      most_recent = true
+      #addon_version = "v1.28.2-eksbuild.2"
     }
     vpc-cni = {
-      most_recent = false
-      addon_version = "v1.15.1-eksbuild.1"
+      most_recent = true
+      #addon_version = "v1.15.1-eksbuild.1"
     }
     aws-ebs-csi-driver = {
-      most_recent = false
-      addon_version = "v1.35.0-eksbuild.1"
+      most_recent = true
+      #addon_version = "v1.35.0-eksbuild.1"
       service_account_role_arn = module.irsa_role_ebs_addon.iam_role_arn
     }
   }
