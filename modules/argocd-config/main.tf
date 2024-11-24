@@ -1,55 +1,45 @@
+
+data "aws_eks_cluster" "cluster" {
+  name = var.cluster_name
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name = var.cluster_name
+}
+
 locals {
-  # if any env would have more than one cluster, add it here
-  cluster_map = {
-    "${var.cluster_name}" = var.cluster_endpoint
-  }
-  cluster_base_name = replace(var.cluster_name, "-${var.environment}", "")
+  argocd_auth_token = "EaEpD6lq5kfMwtg9" # Wprowadź tutaj swój token
 }
 
-data aws_eks_cluster cluster {
-  name  = var.cluster_name
-}
 
-data aws_eks_cluster_auth cluster {
-  name  = var.cluster_name
-}
-
-# set argocd projects - we can have multiple environments under single argocd.
-resource "argocd_project" "project_per_env" {
-  for_each = toset(var.environments_list)
+# Definicja projektu ArgoCD
+resource "argocd_project" "project" {
   metadata {
-    name      = "${var.tenant}-${each.key}"
-    namespace = var.argocd_namespace
+    name      = "${var.tenant}-${var.environment}"
+    namespace = "argocd"
   }
 
   spec {
-    description  = "Default project for all apps which runs onto the eks cluster."
+    description  = "Project for all apps running on the EKS cluster."
     source_repos = ["*"]
 
     destination {
-      server    = local.cluster_map["${local.cluster_base_name}-${each.key}"]
+      server    = data.aws_eks_cluster.cluster.endpoint
       namespace = "*"
     }
 
-    # if we would have single env per argocd it could be static then
-    destination {
-      server    = local.cluster_map["${local.cluster_base_name}-${each.key}"]
-      namespace = "*"
-    }
-
-    # perms for the role - dev
     role {
       name = "dev"
       policies = [
-        "p, proj:${var.tenant}-${each.key}:dev, applications, override, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, applications, sync, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, clusters, get, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, clusters, update, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, repositories, create, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, repositories, delete, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, repositories, update, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, logs, get, ${var.tenant}-${each.key}/*, allow",
-        "p, proj:${var.tenant}-${each.key}:dev, exec, create, ${var.tenant}-${each.key}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, applications, override, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, applications, sync, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, clusters, get, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, clusters, update, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, repositories, create, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, repositories, delete, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, repositories, update, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, logs, get, ${var.tenant}-${var.environment}/*, allow",
+        "p, proj:${var.tenant}-${var.environment}:dev, exec, create, ${var.tenant}-${var.environment}/*, allow",
       ]
     }
 
@@ -57,34 +47,23 @@ resource "argocd_project" "project_per_env" {
       group = "*"
       kind  = "*"
     }
-    cluster_resource_whitelist {
-      group = "rbac.authorization.k8s.io"
-      kind  = "ClusterRoleBinding"
-    }
-    cluster_resource_whitelist {
-      group = "rbac.authorization.k8s.io"
-      kind  = "ClusterRole"
-    }
-    namespace_resource_whitelist {
-      group = "networking.k8s.io"
-      kind  = "Ingress"
-    }
+
     namespace_resource_whitelist {
       group = "*"
       kind  = "*"
     }
+
     orphaned_resources {
       warn = true
     }
   }
 }
 
-# Git Generator - Directories
+# Definicja ArgoCD Application Set
 resource "argocd_application_set" "git_directories" {
-  for_each = toset(var.environments_list)
   metadata {
-    name      = "${var.tenant}-${each.key}-git-dir-generator"
-    namespace = var.argocd_namespace
+    name      = "${var.tenant}-${var.environment}-git-dir-generator"
+    namespace = "argocd"
   }
 
   spec {
@@ -105,8 +84,8 @@ resource "argocd_application_set" "git_directories" {
           list {
             elements = [
               {
-                cluster = "${local.cluster_base_name}-${each.key}"
-                url     = local.cluster_map["${local.cluster_base_name}-${each.key}"]
+                cluster   = data.aws_eks_cluster.cluster.name
+                url       = data.aws_eks_cluster.cluster.endpoint
                 namespace = var.default_namespace_target
               }
             ]
@@ -115,23 +94,22 @@ resource "argocd_application_set" "git_directories" {
       }
     }
 
-
     template {
       metadata {
         name = "{{cluster}}-{{path.basename}}"
       }
 
       spec {
-        project = "${var.tenant}-${each.key}"
+        project = "${var.tenant}-${var.environment}"
         source {
           repo_url        = var.app_repo_url
           target_revision = var.target_revision
           path            = "{{path}}"
           helm {
-            value_files = ["values-${each.key}.yaml"]
+            value_files  = ["values-${var.environment}.yaml"]
             release_name = "{{path.basename}}"
             parameter {
-              name = "envs.EXAMPLE_VAR"
+              name  = "envs.EXAMPLE_VAR"
               value = "example"
             }
           }
