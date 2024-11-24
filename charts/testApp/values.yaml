@@ -1,7 +1,7 @@
 replicaCount: 3
 
 image:
-  repository: <reponame>/helloworldex
+  repository: f4talny/putit
   tag: latest
   pullPolicy: IfNotPresent
 
