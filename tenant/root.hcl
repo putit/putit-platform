@@ -27,15 +27,16 @@ generate "provider" {
 # default provider versions
 terraform {
    required_providers {
-        aws = "~> 5.0"
-        kubernetes = "~> 2.0"
+        aws = "~> 5.82"
+        kubernetes = "~> 2.35"
+        helm = "~> 2.17"
         argocd = {
           source = "oboukili/argocd"
-          version = "~> 6.0"
+          version = "~> 6.2"
         }
         kubectl = {
           source  = "gavinbunney/kubectl"
-          version = ">= 1.7.0"
+          version = "~> 1.18"
        }
     }
 }
