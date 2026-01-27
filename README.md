@@ -92,7 +92,7 @@ Apply modules in this order for a new cluster:
 # 1. VPC
 terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/vpc apply
 
-# 2. Data (Route53 zone lookup)
+# 2. Data (Route53 zone lookup + ACM wildcard certificate)
 terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/data apply
 
 # 3. EKS Cluster

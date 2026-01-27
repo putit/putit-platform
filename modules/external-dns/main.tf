@@ -49,27 +49,37 @@ resource "helm_release" "external_dns" {
   count        = var.deploy ? 1 : 0
   name         = "external-dns"
   chart        = "external-dns"
-  repository   = "https://charts.bitnami.com/bitnami"
+  repository   = "https://kubernetes-sigs.github.io/external-dns/"
   namespace    = var.namespace
   version      = var.chart_version
   force_update = false
 
   set {
-    name = "aws.region"
+    name  = "provider.name"
+    value = "aws"
+  }
+
+  set {
+    name  = "env[0].name"
+    value = "AWS_DEFAULT_REGION"
+  }
+
+  set {
+    name  = "env[0].value"
     value = var.region
   }
 
   set {
-    name = "domainFilters[0]"
+    name  = "domainFilters[0]"
     value = local.tenant_root_domain
   }
 
   set {
-    name = "zoneIdFilters[0]"
-    value = var.hosted_zone_id
+    name  = "extraArgs[0]"
+    value = "--zone-id-filter=${var.hosted_zone_id}"
   }
 
-  # has to match 
+  # has to match
   set {
     name  = "serviceAccount.name"
     value = local.serviceAccountName
@@ -81,7 +91,7 @@ resource "helm_release" "external_dns" {
   }
 
   set {
-    name = "txtPrefix"
+    name  = "txtPrefix"
     value = var.cluster_name
   }
 
