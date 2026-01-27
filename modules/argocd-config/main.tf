@@ -6,6 +6,27 @@ locals {
   cluster_base_name = replace(var.cluster_name, "-${var.environment}", "")
 }
 
+# Declarative cluster registration — replaces manual `argocd cluster add`
+resource "kubernetes_secret" "argocd_cluster" {
+  metadata {
+    name      = var.cluster_name
+    namespace = var.argocd_namespace
+    labels = {
+      "argocd.argoproj.io/secret-type" = "cluster"
+    }
+  }
+
+  data = {
+    name   = var.cluster_name
+    server = "https://kubernetes.default.svc"
+    config = jsonencode({
+      tlsClientConfig = {
+        insecure = false
+      }
+    })
+  }
+}
+
 data aws_eks_cluster cluster {
   name  = var.cluster_name
 }

@@ -6,6 +6,8 @@ data "aws_eks_cluster_auth" "cluster" {
   name  = var.cluster_name
 }
 
+data "aws_caller_identity" "current" {}
+
 resource "helm_release" "ssm" {
   count      = var.deploy ? 1 : 0
   name       = "ssm"
@@ -47,7 +49,7 @@ resource "aws_iam_policy" "secrets_manager_access" {
           "secretsmanager:GetSecretValue",
           "secretsmanager:DescribeSecret"
         ],
-        "Resource": ["arn:aws:secretsmanager:eu-west-1:xxxxxxxxxxxxxxx:secret:staging/admin-pn2rWs"]
+        "Resource": ["arn:aws:secretsmanager:${var.region}:${data.aws_caller_identity.current.account_id}:secret:*"]
       }
     ]
   })

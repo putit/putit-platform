@@ -42,3 +42,19 @@ variable "cluster_oidc_provider_arn" {
   type        = string
   description = "OIDC provider arn"
 }
+
+variable "external_secrets" {
+  description = "List of ExternalSecret resources to create"
+  type = list(object({
+    name               = string
+    namespace          = string
+    refresh_interval   = string
+    target_secret_name = string
+    data = list(object({
+      secret_key      = string
+      remote_key      = string
+      remote_property = string
+    }))
+  }))
+  default = []
+}

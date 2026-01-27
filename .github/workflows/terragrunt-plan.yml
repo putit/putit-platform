@@ -1,0 +1,80 @@
+name: Terragrunt Plan
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'modules/**'
+      - 'tenant/**'
+      - 'charts/**'
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+env:
+  AWS_REGION: eu-west-1
+  TF_VERSION: "1.9.8"
+  TG_VERSION: "0.68.9"
+
+jobs:
+  plan:
+    name: Terragrunt Plan
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        module:
+          - tenant/k8s/eu-west-1/sandbox/vpc
+          - tenant/k8s/eu-west-1/sandbox/eks/cluster
+          - tenant/k8s/eu-west-1/sandbox/eks/namespaces
+          - tenant/k8s/eu-west-1/sandbox/eks/aws-load-balancer-controller
+          - tenant/k8s/eu-west-1/sandbox/eks/external-dns
+          - tenant/k8s/eu-west-1/sandbox/eks/traefik-ingress
+          - tenant/k8s/eu-west-1/sandbox/eks/external-secret
+          - tenant/k8s/eu-west-1/sandbox/eks/secret-manager
+          - tenant/k8s/eu-west-1/sandbox/eks/karpenter
+          - tenant/k8s/eu-west-1/sandbox/eks/monitoring
+          - tenant/k8s/eu-west-1/sandbox/eks/logging
+          - tenant/k8s/eu-west-1/sandbox/eks/argocd-server
+          - tenant/k8s/eu-west-1/sandbox/eks/argocd-config
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Setup Terragrunt
+        uses: autero1/action-terragrunt@v3
+        with:
+          terragrunt-version: ${{ env.TG_VERSION }}
+
+      - name: Terragrunt Init
+        run: terragrunt init --terragrunt-working-dir=${{ matrix.module }}
+
+      - name: Terragrunt Plan
+        run: terragrunt plan --terragrunt-working-dir=${{ matrix.module }} -no-color 2>&1 | tee plan.txt
+
+      - name: Post Plan to PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const plan = fs.readFileSync('plan.txt', 'utf8');
+            const truncated = plan.length > 60000 ? plan.substring(0, 60000) + '\n... (truncated)' : plan;
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: `### Terragrunt Plan: \`${{ matrix.module }}\`\n\`\`\`\n${truncated}\n\`\`\``
+            });

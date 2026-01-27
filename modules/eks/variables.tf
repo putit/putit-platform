@@ -50,9 +50,9 @@ variable "workers_max_sizing" {
 }
 
 variable "ami_id" {
-  type    = string
-  default = "ami-0f3ea2eb3faa6e2b6"
-  description = "EKS Worker Nodes VM Image ID"
+  type        = string
+  default     = ""
+  description = "EKS Worker Nodes VM Image ID. Leave empty to auto-detect latest EKS-optimized AMI via SSM."
 }
 
 variable "cluster_version" {

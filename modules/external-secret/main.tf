@@ -131,29 +131,29 @@ resource "kubectl_manifest" "external_secrets_secretstore" {
 }
 
 resource "kubectl_manifest" "external_secrets_externalsecret" {
+  for_each = { for idx, secret in var.external_secrets : secret.name => secret }
+
   yaml_body = <<-YAML
     apiVersion: external-secrets.io/v1beta1
     kind: ExternalSecret
     metadata:
-      name: secret
-      namespace: default
+      name: ${each.value.name}
+      namespace: ${each.value.namespace}
     spec:
-      refreshInterval: 10m
+      refreshInterval: ${each.value.refresh_interval}
       secretStoreRef:
         name: aws-secretsmanager
         kind: SecretStore
       target:
-        name: secrets-manager-secret
+        name: ${each.value.target_secret_name}
         creationPolicy: Owner
       data:
-        - secretKey: staging-admin-username
+        %{for entry in each.value.data}
+        - secretKey: ${entry.secret_key}
           remoteRef:
-            key: staging/kamil3
-            property: admin
-        - secretKey: staging-admin-kamil
-          remoteRef:
-            key: staging/kamil4
-            property: admin
+            key: ${entry.remote_key}
+            property: ${entry.remote_property}
+        %{endfor}
   YAML
 
   depends_on = [

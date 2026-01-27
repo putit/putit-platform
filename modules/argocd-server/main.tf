@@ -86,6 +86,23 @@ resource "helm_release" "argocd" {
   depends_on = [kubernetes_namespace.argocd]
 }
 
-# please then register the cluster. 
-# ArgoCD creats SA, token and role for its self
-#  argocd cluster add --yes <CLUSTER_NAME>
+# Store ArgoCD admin password in AWS Secrets Manager for retrieval without kubectl
+data "kubernetes_secret" "argocd_admin" {
+  count = var.deploy ? 1 : 0
+  metadata {
+    name      = "argocd-initial-admin-secret"
+    namespace = var.namespace
+  }
+  depends_on = [helm_release.argocd]
+}
+
+resource "aws_secretsmanager_secret" "argocd_admin" {
+  count = var.deploy ? 1 : 0
+  name  = "${var.environment}/argocd-admin-password"
+}
+
+resource "aws_secretsmanager_secret_version" "argocd_admin" {
+  count         = var.deploy ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.argocd_admin[0].id
+  secret_string = data.kubernetes_secret.argocd_admin[0].data["password"]
+}

@@ -1,100 +1,168 @@
-# Overview
+# putit-platform
 
-- EKS cluster deployed into VPC
-- application installed on the cluster
-  - aws-loadbalancer-controller - to spin up ALB for traefik ingress
-  - traefik - which behaves as an ingress
-  - nginx - which is our demo app behind dsi-gateway
-  - argocd - for the future to prove that we can make it working with Github action in cicd
-  - external-dns - manage DNS in route53 for both domains technipfmc.com and .service
-  - external-secret - allows POD to obtain secrets from AWS Secret Manager
+EKS cluster deployed into VPC with supporting services managed via Terraform/Terragrunt.
 
-# TODO
- - move default namespace to be a === environment,
- - check argocd server and config and add github discovery generator
- - add monitoring with promethues stack and grafana
- - add opensearch module and logs
+## Components
 
+- **EKS Cluster** — Kubernetes v1.30, self-managed node groups, EBS CSI driver, IRSA
+- **AWS Load Balancer Controller** — provisions ALBs for ingress
+- **Traefik** — ingress controller behind dual ALB (internal + public)
+- **External-DNS** — manages DNS records in Route53
+- **External-Secrets** — syncs AWS Secrets Manager secrets to Kubernetes
+- **Secrets Store CSI Driver** — mounts secrets as volumes
+- **Karpenter** — auto-scales nodes based on workload demand
+- **ArgoCD** — GitOps continuous delivery with GitHub integration
+- **Monitoring** — kube-prometheus-stack (Prometheus, Grafana, AlertManager, node-exporter, kube-state-metrics)
+- **Logging** — Grafana Loki (log storage) + Grafana Alloy (log collector DaemonSet)
+- **Nginx** — demo application
 
-## Repo strucutre
+## Repo Structure
 
 ```
-├── charts
-│   ├── nginx
-│   │   ├── charts
-│   │   └── templates
-│   └── traefik
-│       ├── charts
-│       └── templates
-├── modules
-│   ├── argocd-config
-│   ├── argocd-server
-│   │   └── values
-│   ├── eks
-│   │   └── policies
-│   │       └── v2.7.1
-│   ├── external-dns
-│   │   ├── policies
-│   │   └── values
-│   ├── helm-hash
-│   ├── iam
-│   │   └── policies
-│   ├── k8s-namespaces
-│   ├── nginx
-│   │   └── values
-│   ├── traefik-ingress
-│   │   ├── policies
-│   │   └── values
-│   └── vpc
-└── tenant
-    └── k8s
-        └── eu-west-1
-            └── sandbox
-                ├── eks
-                │   ├── argocd-config
-                │   ├── argocd-server
-                │   ├── aws-load-balancer-controller
-                │   ├── cluster
-                │   ├── data
-                │   ├── external-dns
-                │   ├── namespaces
-                │   ├── nginx
-                │   └── traefik-ingress
-                ├── iam
-                └── vpc
+├── .github/workflows/       # CI/CD pipelines (plan on PR, apply on merge)
+├── charts/                  # Local Helm chart wrappers with extra templates
+│   ├── nginx/
+│   └── traefik/
+├── modules/                 # Terraform modules (called by Terragrunt)
+│   ├── argocd-config/
+│   ├── argocd-server/
+│   ├── aws-load-balancer-controller/
+│   ├── eks/
+│   ├── external-dns/
+│   ├── external-secret/
+│   ├── helm-hash/
+│   ├── iam/
+│   ├── k8s-namespaces/
+│   ├── karpenter/
+│   ├── logging/
+│   ├── monitoring/
+│   ├── nginx/
+│   ├── secret-manager/
+│   ├── traefik-ingress/
+│   └── vpc/
+├── scripts/                 # Operational scripts
+│   └── bootstrap-state.sh   # Create S3 bucket + DynamoDB for TF state
+└── tenant/                  # Terragrunt environment configs
+    └── k8s/
+        └── eu-west-1/
+            └── sandbox/
 ```
 
-### Charts 
-Here are some addiontal templates the the open source charts. 
+## Prerequisites
 
-### Modules
-Terraform code, which should be versioned outside main repository. Those modules are being called by terragrunt.
+- AWS CLI configured with appropriate credentials
+- Terraform >= 1.9
+- Terragrunt >= 0.68
+- kubectl
+- Helm 3
 
-### Tenant
-Name of the logical group of environments.
+## Bootstrap (New Account)
 
-## Usage
+Create the S3 state bucket and DynamoDB lock table:
 
-To provsion the EKS cluster we have to run terragrunt command AFTER ginger has been applied.
+```bash
+./scripts/bootstrap-state.sh eu-west-1
 ```
+
+## Deployment Order
+
+Apply modules in this order for a new cluster:
+
+```bash
+# 1. VPC
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/vpc apply
+
+# 2. Data (Route53 zone lookup)
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/data apply
+
+# 3. EKS Cluster
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/cluster apply
+
+# 4. Namespaces
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/namespaces apply
+
+# 5. IAM
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/iam apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/external-dns apply
+
+# 6. AWS Load Balancer Controller
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/aws-load-balancer-controller apply
+
+# 7. External DNS
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/external-dns apply
+
+# 8. Traefik Ingress
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/traefik-ingress apply
+
+# 9. External Secrets
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/external-secret apply
+
+# 10. Secret Manager (CSI Driver)
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/secret-manager apply
+
+# 11. Karpenter
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/karpenter apply
+
+# 12. Monitoring (Prometheus + Grafana)
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/monitoring apply
+
+# 13. Logging (Loki + Alloy)
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/logging apply
+
+# 14. ArgoCD Server
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/argocd-server apply
+
+# 15. ArgoCD Config
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/argocd-config apply
+
+# 16. Nginx (demo app)
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/nginx apply
 ```
 
-Update your kubeconfig, by adding the cluster into it.
+Or use `terragrunt run-all` from the sandbox root (dependency graph is respected):
 
-Get the cluster name
-```
-aws eks list-clusters --profile $AWS_PROFILE --region $AWS_REGION
+```bash
+terragrunt run-all apply --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox --terragrunt-non-interactive
 ```
 
-Add the cluster to the kubeconfig
+## Post-Deployment
+
+Update kubeconfig:
+
+```bash
+aws eks list-clusters --region eu-west-1
+aws eks update-kubeconfig --region eu-west-1 --name <CLUSTER_NAME>
 ```
-aws eks update-kubeconfig --region $AWS_REGION --name <CLUSTER_NAME>
+
+Retrieve ArgoCD admin password:
+
+```bash
+# From Kubernetes
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+
+# From AWS Secrets Manager (if deployed)
+aws secretsmanager get-secret-value --secret-id sandbox/argocd-admin-password --query SecretString --output text
 ```
+
+Access Grafana:
+
+```bash
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
+# Default credentials: admin / admin (change on first login)
+```
+
+Verify logs in Grafana:
+- Open Grafana > Explore > Select Loki datasource
+- Query: `{namespace="default"}`
+
+## Adding a New Environment
+
+1. Create `tenant/k8s/<region>/<env-name>/env.hcl` with environment name
+2. Copy the sandbox terragrunt structure
+3. Update inputs as needed for the new environment
+4. Run `bootstrap-state.sh` if using a new AWS account
+
+## CI/CD
+
+- **Pull Requests**: `terragrunt plan` runs automatically for changed modules
+- **Merge to main**: `terragrunt apply` runs automatically
+- Configure `AWS_ROLE_ARN` secret in GitHub repository settings

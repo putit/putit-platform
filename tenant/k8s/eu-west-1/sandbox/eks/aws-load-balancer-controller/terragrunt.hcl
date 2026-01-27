@@ -1,5 +1,5 @@
 terraform {
-  source = "${get_parent_terragrunt_dir()}/../modules/aws-loadbalanbcer-controller"
+  source = "${get_parent_terragrunt_dir()}/../modules/aws-load-balancer-controller"
 }
 
 locals {

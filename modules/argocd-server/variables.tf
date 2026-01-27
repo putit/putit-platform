@@ -23,7 +23,7 @@ variable "deploy" {
 variable "chart_version" {
   type        = string
   description = "Chart version for argocd"
-  default     = "5.9.0"
+  default     = "7.6.12"
 }
 
 variable "environment" {

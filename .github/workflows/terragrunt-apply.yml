@@ -1,0 +1,59 @@
+name: Terragrunt Apply
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'modules/**'
+      - 'tenant/**'
+      - 'charts/**'
+  workflow_dispatch:
+    inputs:
+      module:
+        description: 'Specific module path to apply (leave empty for run-all)'
+        required: false
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: eu-west-1
+  TF_VERSION: "1.9.8"
+  TG_VERSION: "0.68.9"
+
+jobs:
+  apply:
+    name: Terragrunt Apply
+    runs-on: ubuntu-latest
+    environment: sandbox
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Setup Terragrunt
+        uses: autero1/action-terragrunt@v3
+        with:
+          terragrunt-version: ${{ env.TG_VERSION }}
+
+      - name: Terragrunt Apply (specific module)
+        if: inputs.module != ''
+        run: |
+          terragrunt apply --terragrunt-working-dir=${{ inputs.module }} -auto-approve
+
+      - name: Terragrunt Run-All Apply
+        if: inputs.module == ''
+        run: |
+          terragrunt run-all apply --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox -auto-approve --terragrunt-non-interactive
