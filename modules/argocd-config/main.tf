@@ -117,7 +117,7 @@ resource "argocd_application_set" "git_directories" {
             revision = var.target_revision
 
             directory {
-              path = "chart/*"
+              path = "apps/*"
             }
           }
         }
@@ -147,7 +147,7 @@ resource "argocd_application_set" "git_directories" {
         source {
           repo_url        = var.app_repo_url
           target_revision = var.target_revision
-          path            = "{{path}}"
+          path            = "{{path}}/charts"
           helm {
             value_files = ["values-${each.key}.yaml"]
             release_name = "{{path.basename}}"

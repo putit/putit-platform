@@ -14,18 +14,25 @@ EKS cluster deployed into VPC with supporting services managed via Terraform/Ter
 - **ArgoCD** — GitOps continuous delivery with GitHub integration
 - **Monitoring** — kube-prometheus-stack (Prometheus, Grafana, AlertManager, node-exporter, kube-state-metrics)
 - **Logging** — Grafana Loki (log storage) + Grafana Alloy (log collector DaemonSet)
+- **ECR** — container registry per app (immutable tags, scan on push)
 - **Nginx** — demo application
+- **Echo-Server** — demo app deployed via ArgoCD + GitHub Actions CI/CD
 
 ## Repo Structure
 
 ```
-├── .github/workflows/       # CI/CD pipelines (plan on PR, apply on merge)
+├── .github/workflows/       # CI/CD pipelines (plan on PR, apply on merge, app builds)
+├── apps/                    # Dockerized applications with Helm charts (ArgoCD auto-discovers)
+│   └── echo-server/
+│       ├── Dockerfile
+│       └── charts/          # Helm chart (values.yaml, templates/)
 ├── charts/                  # Local Helm chart wrappers with extra templates
 │   ├── nginx/
 │   └── traefik/
 ├── modules/                 # Terraform modules (called by Terragrunt)
 │   ├── argocd-config/
 │   ├── argocd-server/
+│   ├── ecr/
 │   ├── aws-load-balancer-controller/
 │   ├── eks/
 │   ├── external-dns/
@@ -116,6 +123,9 @@ terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/argocd-conf
 
 # 16. Nginx (demo app)
 terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/nginx apply
+
+# 17. ECR (container registries for apps)
+terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/ecr apply
 ```
 
 Or use `terragrunt run-all` from the sandbox root (dependency graph is respected):
@@ -153,6 +163,28 @@ kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
 Verify logs in Grafana:
 - Open Grafana > Explore > Select Loki datasource
 - Query: `{namespace="default"}`
+
+## Deploying Apps
+
+Apps live in `apps/<name>/` with a Dockerfile and Helm chart. ArgoCD auto-discovers them via the git directory generator.
+
+**Traffic flow:** Route53 → ALB (ACM TLS) → Traefik (NodePort) → IngressRoute → Service → Pod
+
+### CI/CD Flow
+
+1. Push changes to `apps/<name>/Dockerfile` or `apps/<name>/src/`
+2. GitHub Actions builds Docker image and pushes to ECR
+3. Workflow updates `image.tag` in `apps/<name>/charts/values.yaml` and commits
+4. ArgoCD detects the change and syncs
+
+### Adding a New App
+
+1. Add name to `tenant/.../ecr/terragrunt.hcl` `app_names` list
+2. Add name to `tenant/.../iam/terragrunt.hcl` `services` list
+3. Create `apps/<name>/charts/` (Chart.yaml, values.yaml, templates/)
+4. Create `apps/<name>/Dockerfile`
+5. Add `.github/workflows/build-<name>.yml`
+6. Apply ECR + IAM modules, push — ArgoCD auto-discovers
 
 ## Adding a New Environment
 
