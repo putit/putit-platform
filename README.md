@@ -77,61 +77,61 @@ Apply modules in this order for a new cluster:
 
 ```bash
 # 1. VPC
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/vpc apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/vpc apply
 
 # 2. Data (Route53 zone lookup)
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/data apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/data apply
 
 # 3. EKS Cluster
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/cluster apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/cluster apply
 
 # 4. Namespaces
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/namespaces apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/namespaces apply
 
 # 5. IAM
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/iam apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/iam apply
 
 # 6. AWS Load Balancer Controller
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/aws-load-balancer-controller apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/aws-load-balancer-controller apply
 
 # 7. External DNS
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/external-dns apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/external-dns apply
 
 # 8. Traefik Ingress
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/traefik-ingress apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/traefik-ingress apply
 
 # 9. External Secrets
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/external-secret apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/external-secret apply
 
 # 10. Secret Manager (CSI Driver)
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/secret-manager apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/secret-manager apply
 
 # 11. Karpenter
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/karpenter apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/karpenter apply
 
 # 12. Monitoring (Prometheus + Grafana)
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/monitoring apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/monitoring apply
 
 # 13. Logging (Loki + Alloy)
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/logging apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/logging apply
 
 # 14. ArgoCD Server
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/argocd-server apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-server apply
 
 # 15. ArgoCD Config
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/argocd-config apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-config apply
 
 # 16. Nginx (demo app)
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/nginx apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/nginx apply
 
 # 17. ECR (container registries for apps)
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/ecr apply
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/ecr apply
 ```
 
 Or use `terragrunt run-all` from the sandbox root (dependency graph is respected):
 
 ```bash
-terragrunt run-all apply --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox --terragrunt-non-interactive
+terragrunt run-all apply --working-dir tenant/k8s/eu-west-1/sandbox --non-interactive
 ```
 
 ## Post-Deployment
