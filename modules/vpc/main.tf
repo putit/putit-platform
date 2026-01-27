@@ -1,5 +1,6 @@
 module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "~> 5.16"  # pin to 5.x — v6.0+ requires AWS provider v6
 
   name = var.name
   cidr = var.cidr
