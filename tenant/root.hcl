@@ -70,7 +70,7 @@ provider "aws" {
 }
 
 # all params should come from exported env var.
-# ARGOCD_SERVER=argocd.sandbox.k8s.services.technipfmc.com:443
+# ARGOCD_SERVER=argocd.sandbox.k8s.putit.io:443
 # ARGOCD_AUTH_TOKEN="secret"
 # ARGOCD_OPTS="--grpc-web"
 provider "argocd" {}

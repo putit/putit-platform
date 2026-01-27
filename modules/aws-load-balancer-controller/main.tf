@@ -1,3 +1,7 @@
+locals {
+  serviceAccountName = "aws-load-balancer-controller"
+}
+
 data aws_eks_cluster cluster {
   name  = var.cluster_name
 }
@@ -8,8 +12,8 @@ data aws_eks_cluster_auth cluster {
 
 resource "aws_iam_policy" "aws_loadbalancer_controller" {
   name        = "aws-loadbalancer-controller-${var.cluster_name}"
-  description = "AWS LoadBalancer Controller policy for version ${var.aws_loadbalancer_controller_app_version}"
-  policy =  file("${path.module}/policies/${var.aws_loadbalancer_controller_app_version}/iam_policy.json")
+  description = "AWS LoadBalancer Controller policy for version ${var.app_version}"
+  policy =  file("${path.module}/policies/${var.app_version}/iam_policy.json")
 }
 
 module "irsa_role_alb_controller" {
@@ -35,7 +39,7 @@ resource "helm_release" "aws_lb_controller" {
   name       = "aws-load-balancer-controller"
   repository = "https://aws.github.io/eks-charts"
   chart      = "aws-load-balancer-controller"
-  version    = var.aws_loadbalancer_controller_chart_version
+  version    = var.chart_version
   namespace  = var.namespace
   create_namespace = true
 

@@ -29,40 +29,6 @@
         },
 
         {
-            "Action": "iam:ListRoles",
-            "Effect": "Allow",
-            "Resource": "*",
-            "Sid": "IAMListRoles"
-        },
-        {
-            "Action": [
-                "codeartifact:Read*",
-                "codeartifact:PutPackageMetadata",
-                "codeartifact:PublishPackageVersion",
-                "codeartifact:List*",
-                "codeartifact:Get*",
-                "codeartifact:Describe*"
-            ],
-            "Effect": "Allow",
-            "Resource": [
-                "arn:aws:codeartifact:${region}:835811189142:repository/dsi/dsi_repository",
-                "arn:aws:codeartifact:${region}:835811189142:package/dsi/dsi_repository/npm/*",
-                "arn:aws:codeartifact:${region}:835811189142:package/dsi/dsi_repository/maven/*",
-                "arn:aws:codeartifact:${region}:835811189142:domain/dsi"
-            ],
-            "Sid": "CodeArtifact"
-        },
-        {
-            "Action": [
-                "sts:GetServiceBearerToken"
-            ],
-            "Effect": "Allow",
-            "Resource": [
-                "*"
-            ],
-            "Sid": "BearerTokenForCodeartifact"
-        },
-        {
             "Action": [
                 "secretsmanager:DescribeSecret",
                 "secretsmanager:GetSecretValue",

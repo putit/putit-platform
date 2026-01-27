@@ -21,7 +21,7 @@ inputs = {
   cluster_name            = dependency.eks-cluster.outputs.cluster_name
   cluster_oidc_provider_arn = dependency.eks-cluster.outputs.cluster_oidc_provider_arn
   # make sure in module there is a matching IAM policy
-  chart_version = "1.8.1"
-  app_version = "v2.8.1"
+  chart_version = "3.0.0"
+  app_version = "v3.0.0"
   namespace = "ingress"
 }

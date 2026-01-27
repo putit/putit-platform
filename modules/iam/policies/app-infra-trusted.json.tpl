@@ -35,7 +35,7 @@
                 },
                 "ForAllValues:StringLike": {
                     "token.actions.githubusercontent.com:sub": [
-                        "repo:tfmcdigital/${service}:*"
+                        "repo:putit/${service}:*"
                     ]
                 }
             }

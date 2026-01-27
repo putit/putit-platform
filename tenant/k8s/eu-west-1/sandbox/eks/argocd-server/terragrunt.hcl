@@ -28,4 +28,7 @@ inputs = {
   chart_version = "7.6.12"
   deploy = true
   pub_ingress_hostname = dependency.traefik-ingress.outputs.pub_ingress_hostname
+  github_app_id                      = "2742519"
+  github_app_installation_id         = "106498258"
+  github_app_private_key_secret_name = "${local.environment}/argocd-github-app-private-key"
 }

@@ -22,7 +22,6 @@ inputs = {
   cluster_oidc_provider_arn = dependency.eks-cluster.outputs.cluster_oidc_provider_arn
   environment = local.environment 
   tenant = include.root.inputs.tenant
-  traefik_chart_version = "20.8.0"
   # TODO: replace with data.aws_acm_certificate lookup or pass from dependency
   all_cert_arns_string = "arn:aws:acm:${local.region}:${local.aws_account_id}:certificate/${get_env("ACM_CERTIFICATE_ID", "636f0703-c9a7-4aa4-93a8-a289786bc666")}"
   chart_directory = "${get_parent_terragrunt_dir()}/../charts/traefik//"

@@ -71,6 +71,19 @@ Create the S3 state bucket and DynamoDB lock table:
 ./scripts/bootstrap-state.sh eu-west-1
 ```
 
+## Pre-Deployment Secrets
+
+Before deploying ArgoCD, store the GitHub App private key in AWS Secrets Manager:
+
+```bash
+aws secretsmanager create-secret \
+  --name "sandbox/argocd-github-app-private-key" \
+  --secret-string file://path/to/github-app-private-key.pem \
+  --region eu-west-1
+```
+
+The ArgoCD module reads this secret during `terraform apply` and creates a Kubernetes secret with the proper ArgoCD labels. The IAM role used for Terraform execution (both local and CI) needs `secretsmanager:GetSecretValue` on this secret.
+
 ## Deployment Order
 
 Apply modules in this order for a new cluster:

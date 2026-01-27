@@ -2,15 +2,7 @@ configs:
   cm:
     accounts.dev: apiKey, login
     accounts.cicd: apiKey, login
-  credentialTemplates:
-    github-enterprise-creds-1:
-      url: https://github.com/tfmcdigital
-      githubAppID: 154147
-      githubAppInstallationID: 20902038
   repositories:
-    example-helm-charts:
-      name: platform-k8s-charts-poc
-      url: https://github.com/tfmcdigital/platform-k8s-charts-poc.git
     traefik:
       name: traefik
       type: helm

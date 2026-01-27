@@ -29,7 +29,7 @@ variable "cluster_oidc_provider_arn" {
 variable "chart_version" {
   type        = string
   description = "Helm chart version for traefik."
-  default     = "7.0.0"
+  default     = "9.0.3"
 }
 
 variable "deploy" {
