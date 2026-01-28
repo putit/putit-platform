@@ -9,5 +9,5 @@ include "root" {
 }
 
 inputs = {
-  app_names = ["echo-server"]
+  app_names = []  # Apps are auto-created by GitHub Actions workflow
 }

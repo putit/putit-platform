@@ -58,6 +58,7 @@ resource "helm_release" "external_dns" {
     provider = {
       name = "aws"
     }
+    sources = ["service", "ingress"]
     env = [
       {
         name  = "AWS_DEFAULT_REGION"

@@ -10,5 +10,4 @@ service:
 
 ingress:
   host: echo-server.sandbox.k8s.putit.io
-  entryPoints:
-    - web
+  target: traefik-pub-k8s.sandbox.k8s.putit.io

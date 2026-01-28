@@ -84,11 +84,15 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
         run: |
-          aws ecr describe-repositories --repository-names ${{ matrix.app }} 2>/dev/null || \
-          aws ecr create-repository \
-            --repository-name ${{ matrix.app }} \
-            --image-scanning-configuration scanOnPush=true \
-            --image-tag-mutability IMMUTABLE
+          if ! aws ecr describe-repositories --repository-names ${{ matrix.app }} 2>/dev/null; then
+            echo "Creating ECR repository ${{ matrix.app }}"
+            aws ecr create-repository \
+              --repository-name ${{ matrix.app }} \
+              --image-scanning-configuration scanOnPush=true \
+              --image-tag-mutability MUTABLE
+          else
+            echo "ECR repository ${{ matrix.app }} already exists"
+          fi
 
       - name: Build and push Docker image
         if: steps.check.outputs.exists == 'true'

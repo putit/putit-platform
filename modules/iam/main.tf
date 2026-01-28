@@ -62,7 +62,8 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
       {
         Effect = "Allow"
         Action = [
-          "ecr:GetAuthorizationToken"
+          "ecr:GetAuthorizationToken",
+          "ecr:CreateRepository"
         ]
         Resource = "*"
       },
@@ -80,7 +81,6 @@ resource "aws_iam_role_policy" "github_actions_ecr" {
           "ecr:UploadLayerPart",
           "ecr:CompleteLayerUpload",
           "ecr:PutImage",
-          "ecr:CreateRepository",
           "ecr:PutImageScanningConfiguration",
           "ecr:PutImageTagMutability"
         ]
