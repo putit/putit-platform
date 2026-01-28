@@ -48,5 +48,16 @@ resource "helm_release" "aws_lb_controller" {
     value = var.cluster_name
   }
 
-  wait = true
+  set {
+    name  = "serviceAccount.name"
+    value = local.serviceAccountName
+  }
+
+  set {
+    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
+    value = module.irsa_role_alb_controller.iam_role_arn
+  }
+
+  wait       = true
+  depends_on = [module.irsa_role_alb_controller]
 }

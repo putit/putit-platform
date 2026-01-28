@@ -54,46 +54,27 @@ resource "helm_release" "external_dns" {
   version      = var.chart_version
   force_update = false
 
-  set {
-    name  = "provider.name"
-    value = "aws"
-  }
-
-  set {
-    name  = "env[0].name"
-    value = "AWS_DEFAULT_REGION"
-  }
-
-  set {
-    name  = "env[0].value"
-    value = var.region
-  }
-
-  set {
-    name  = "domainFilters[0]"
-    value = local.tenant_root_domain
-  }
-
-  set {
-    name  = "extraArgs[0]"
-    value = "--zone-id-filter=${var.hosted_zone_id}"
-  }
-
-  # has to match
-  set {
-    name  = "serviceAccount.name"
-    value = local.serviceAccountName
-  }
-
-  set {
-    name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
-    value = module.irsa_role_external_dns.iam_role_arn
-  }
-
-  set {
-    name  = "txtPrefix"
-    value = var.cluster_name
-  }
+  values = [yamlencode({
+    provider = {
+      name = "aws"
+    }
+    env = [
+      {
+        name  = "AWS_DEFAULT_REGION"
+        value = var.region
+      }
+    ]
+    domainFilters = [var.root_domain]
+    extraArgs     = ["--zone-id-filter=${var.hosted_zone_id}"]
+    txtPrefix     = var.cluster_name
+    serviceAccount = {
+      name   = local.serviceAccountName
+      create = true
+      annotations = {
+        "eks.amazonaws.com/role-arn" = module.irsa_role_external_dns.iam_role_arn
+      }
+    }
+  })]
 
   depends_on = [ module.irsa_role_external_dns ]
 }

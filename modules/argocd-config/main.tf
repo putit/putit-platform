@@ -3,7 +3,7 @@ locals {
   cluster_map = {
     "${var.cluster_name}" = var.cluster_endpoint
   }
-  cluster_base_name = replace(var.cluster_name, "-${var.environment}", "")
+  cluster_base_name = trimsuffix(var.cluster_name, "-${var.environment}")
 }
 
 # Declarative cluster registration — replaces manual `argocd cluster add`

@@ -53,7 +53,7 @@ resource "helm_release" "argocd" {
   }
 
   set {
-    name  = "server.ingress.annotations.hosts[0]"
+    name  = "server.ingress.hostname"
     value = local.web_domain
   }
 
@@ -68,7 +68,7 @@ resource "helm_release" "argocd" {
   }
 
   set {
-    name  = "server.ingressGrpc.annotations.hosts[0]"
+    name  = "server.ingressGrpc.hostname"
     value = local.argocd_grpc_domain
   }
 

@@ -23,9 +23,12 @@ EKS cluster deployed into VPC with supporting services managed via Terraform/Ter
 ```
 ├── .github/workflows/       # CI/CD pipelines (plan on PR, apply on merge, app builds)
 ├── apps/                    # Dockerized applications with Helm charts (ArgoCD auto-discovers)
+│   ├── example/             # Template app — copy this to create new apps
+│   │   ├── Dockerfile
+│   │   └── charts/          # Helm chart (values.yaml, templates/)
 │   └── echo-server/
 │       ├── Dockerfile
-│       └── charts/          # Helm chart (values.yaml, templates/)
+│       └── charts/
 ├── charts/                  # Local Helm chart wrappers with extra templates
 │   ├── nginx/
 │   └── traefik/
@@ -192,12 +195,14 @@ Apps live in `apps/<name>/` with a Dockerfile and Helm chart. ArgoCD auto-discov
 
 ### Adding a New App
 
-1. Add name to `tenant/.../ecr/terragrunt.hcl` `app_names` list
-2. Add name to `tenant/.../iam/terragrunt.hcl` `services` list
-3. Create `apps/<name>/charts/` (Chart.yaml, values.yaml, templates/)
-4. Create `apps/<name>/Dockerfile`
-5. Add `.github/workflows/build-<name>.yml`
-6. Apply ECR + IAM modules, push — ArgoCD auto-discovers
+1. Copy `apps/example/` to `apps/<name>/`
+2. Update `charts/Chart.yaml` — set `name` to your app name
+3. Update `charts/values.yaml` — set `image.repository`, `containerPort`, `ingress.host`
+4. Update `Dockerfile` for your app
+5. Add name to `tenant/.../ecr/terragrunt.hcl` `app_names` list
+6. Add name to `tenant/.../iam/terragrunt.hcl` `services` list
+7. Add `.github/workflows/build-<name>.yml`
+8. Apply ECR + IAM modules, push — ArgoCD auto-discovers
 
 ## Adding a New Environment
 
