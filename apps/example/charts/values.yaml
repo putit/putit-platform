@@ -1,0 +1,27 @@
+replicaCount: 2
+
+image:
+  # Replace with your ECR repository URI
+  repository: nginx
+  tag: "stable-alpine"
+  pullPolicy: IfNotPresent
+
+containerPort: 80
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 200m
+    memory: 128Mi
+
+service:
+  port: 80
+
+ingress:
+  # Route53 → ALB (ACM TLS) → Traefik (NodePort) → IngressRoute → Service → Pod
+  # Change this to your app's FQDN under the wildcard cert: *.sandbox.k8s.putit.io
+  host: example.sandbox.k8s.putit.io
+  entryPoints:
+    - websecure

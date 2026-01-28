@@ -1,0 +1,6 @@
+apiVersion: v2
+name: example
+description: Example app template — copy this directory to create a new app
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
