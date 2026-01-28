@@ -29,5 +29,5 @@ inputs = {
   environments_list = [local.environment]
   default_namespace_target = "apps"
   app_repo_url = "https://github.com/putit/putit-platform.git"
-  target_revision = "HEAD"
+  target_revision = "upgraded-versions"
 }

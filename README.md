@@ -199,11 +199,12 @@ Apps live in `apps/<name>/` with a Dockerfile and Helm chart. ArgoCD auto-discov
 1. Copy `apps/example/` to `apps/<name>/`
 2. Update `charts/Chart.yaml` — set `name` to your app name
 3. Update `charts/values.yaml` — set `image.repository`, `containerPort`, `ingress.host`
-4. Update `Dockerfile` for your app
-5. Add name to `tenant/.../ecr/terragrunt.hcl` `app_names` list
-6. Add name to `tenant/.../iam/terragrunt.hcl` `services` list
-7. Add `.github/workflows/build-<name>.yml`
-8. Apply ECR + IAM modules, push — ArgoCD auto-discovers
+4. Create `charts/values-<env>.yaml` for each environment (e.g., `values-sandbox.yaml`)
+5. Update `Dockerfile` for your app
+6. Add name to `tenant/.../ecr/terragrunt.hcl` `app_names` list
+7. Add name to `tenant/.../iam/terragrunt.hcl` `services` list
+8. Add `.github/workflows/build-<name>.yml`
+9. Apply ECR + IAM modules, push — ArgoCD auto-discovers
 
 ## Adding a New Environment
 
@@ -211,6 +212,70 @@ Apps live in `apps/<name>/` with a Dockerfile and Helm chart. ArgoCD auto-discov
 2. Copy the sandbox terragrunt structure
 3. Update inputs as needed for the new environment
 4. Run `bootstrap-state.sh` if using a new AWS account
+
+## Adding Clusters to ApplicationSet
+
+ArgoCD ApplicationSets can deploy apps to multiple clusters. To add a new cluster as a target:
+
+### 1. Register the cluster in ArgoCD
+
+Create a Kubernetes secret with cluster credentials in the `argocd` namespace:
+
+```bash
+# For in-cluster (same cluster as ArgoCD)
+kubectl create secret generic <cluster-name> -n argocd \
+  --from-literal=name=<cluster-name> \
+  --from-literal=server=https://kubernetes.default.svc \
+  --from-literal=config='{"tlsClientConfig":{"insecure":false}}'
+kubectl label secret <cluster-name> -n argocd argocd.argoproj.io/secret-type=cluster
+
+# For external clusters, include full credentials:
+kubectl create secret generic <cluster-name> -n argocd \
+  --from-literal=name=<cluster-name> \
+  --from-literal=server=https://<cluster-api-endpoint> \
+  --from-literal=config='{"bearerToken":"<token>","tlsClientConfig":{"insecure":false,"caData":"<base64-ca>"}}'
+kubectl label secret <cluster-name> -n argocd argocd.argoproj.io/secret-type=cluster
+```
+
+### 2. Update the cluster_map in argocd-config module
+
+Edit `modules/argocd-config/main.tf`:
+
+```hcl
+locals {
+  cluster_map = {
+    "k8s-sandbox-sandbox" = "https://kubernetes.default.svc"
+    "k8s-prod-prod"       = "https://kubernetes.default.svc"  # or external endpoint
+  }
+}
+```
+
+### 3. Add environment to the ApplicationSet
+
+Edit `tenant/.../argocd-config/terragrunt.hcl`:
+
+```hcl
+inputs = {
+  environments_list = ["sandbox", "prod"]
+  # ...
+}
+```
+
+### 4. Create environment-specific values files
+
+For each app, create `values-<env>.yaml`:
+
+```bash
+touch apps/<app-name>/charts/values-prod.yaml
+```
+
+### 5. Re-apply argocd-config
+
+```bash
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-config apply
+```
+
+The ApplicationSet will automatically deploy apps to all clusters in `environments_list`.
 
 ## CI/CD
 

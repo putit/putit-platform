@@ -1,7 +1,8 @@
 locals {
   # if any env would have more than one cluster, add it here
+  # Use in-cluster URL since ArgoCD runs inside the cluster
   cluster_map = {
-    "${var.cluster_name}" = var.cluster_endpoint
+    "${var.cluster_name}" = "https://kubernetes.default.svc"
   }
   cluster_base_name = trimsuffix(var.cluster_name, "-${var.environment}")
 }
