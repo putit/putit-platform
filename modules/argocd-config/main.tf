@@ -164,6 +164,15 @@ resource "argocd_application_set" "git_directories" {
           namespace = var.default_namespace_target
         }
 
+        sync_policy {
+          automated {
+            prune       = true
+            self_heal   = true
+            allow_empty = false
+          }
+          sync_options = ["CreateNamespace=true"]
+        }
+
         ignore_difference {
           group         = "apps"
           kind          = "Deployment"
