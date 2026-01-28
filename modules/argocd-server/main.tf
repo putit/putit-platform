@@ -72,15 +72,27 @@ resource "helm_release" "argocd" {
     value = local.argocd_grpc_domain
   }
 
-  # set create-only policy for entire ApplicationSet Controller. 
+  # set create-only policy for entire ApplicationSet Controller.
   # based on: https://github.com/argoproj/argo-cd/issues/9101
   # later when tf provider will support, we can switch to per ApplicationSet policy
   # https://github.com/oboukili/terraform-provider-argocd/issues/333
   # it's needed to allow argocd set override application paramas like image.version
-  # 
+  #
   set {
     name  = "configs.params.applicationsetcontroller\\.policy"
     value = "create-only"
+  }
+
+  # Custom health check for Ingress - Traefik doesn't populate status.loadBalancer
+  # so ArgoCD would show Progressing forever. Mark Ingress as Healthy if it exists.
+  set {
+    name  = "configs.cm.resource\\.customizations\\.health\\.networking\\.k8s\\.io_Ingress"
+    value = <<-EOT
+      hs = {}
+      hs.status = "Healthy"
+      hs.message = "Ingress is healthy"
+      return hs
+    EOT
   }
 
   depends_on = [kubernetes_namespace.argocd]
