@@ -198,13 +198,17 @@ Apps live in `apps/<name>/` with a Dockerfile and Helm chart. ArgoCD auto-discov
 
 1. Copy `apps/example/` to `apps/<name>/`
 2. Update `charts/Chart.yaml` — set `name` to your app name
-3. Update `charts/values.yaml` — set `image.repository`, `containerPort`, `ingress.host`
+3. Update `charts/values.yaml` — set `image.repository` to `<account-id>.dkr.ecr.<region>.amazonaws.com/<name>`, `containerPort`, `ingress.host`
 4. Create `charts/values-<env>.yaml` for each environment (e.g., `values-sandbox.yaml`)
 5. Update `Dockerfile` for your app
-6. Add name to `tenant/.../ecr/terragrunt.hcl` `app_names` list
-7. Add name to `tenant/.../iam/terragrunt.hcl` `services` list
-8. Add `.github/workflows/build-<name>.yml`
-9. Apply ECR + IAM modules, push — ArgoCD auto-discovers
+6. Push to git — the generic workflow auto-creates ECR repo and builds the image
+7. ArgoCD auto-discovers and deploys the app
+
+**That's it!** No manual ECR or workflow setup needed. The `build-app.yml` workflow:
+- Detects which app changed
+- Creates ECR repository if it doesn't exist
+- Builds and pushes the Docker image
+- Updates `values.yaml` with the new image tag
 
 ## Adding a New Environment
 
@@ -279,6 +283,54 @@ The ApplicationSet will automatically deploy apps to all clusters in `environmen
 
 ## CI/CD
 
+### Infrastructure Workflows
+
 - **Pull Requests**: `terragrunt plan` runs automatically for changed modules
 - **Merge to main**: `terragrunt apply` runs automatically
-- Configure `AWS_ROLE_ARN` secret in GitHub repository settings
+
+### Application Build Workflows
+
+App images are built and pushed to ECR when changes are pushed to `apps/<name>/`. The workflow:
+1. Builds Docker image
+2. Pushes to ECR with commit SHA tag
+3. Updates `values.yaml` with new image tag
+4. ArgoCD detects change and syncs
+
+### Setting Up GitHub Actions AWS Access
+
+GitHub Actions uses OIDC to assume an IAM role — no long-term credentials needed.
+
+1. **Apply the IAM module** (creates OIDC provider and role):
+   ```bash
+   terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/iam apply
+   ```
+
+2. **Copy the role ARN** from the output:
+   ```
+   github_actions_role_arn = "arn:aws:iam::123456789012:role/github-actions-putit-platform"
+   ```
+
+3. **Add GitHub secret**:
+   - Go to repo Settings → Secrets and variables → Actions
+   - Click "New repository secret"
+   - Name: `AWS_ROLE_ARN`
+   - Value: the role ARN from step 2
+
+4. **Trigger a workflow** manually or push to trigger automatically:
+   ```bash
+   gh workflow run build-echo-server.yml --ref upgraded-versions
+   ```
+
+### Manual Workflow Trigger
+
+The generic build workflow supports `workflow_dispatch` for manual triggering:
+
+```bash
+# List workflows
+gh workflow list
+
+# Trigger build for specific app
+gh workflow run build-app.yml -f app_name=echo-server
+
+# Or trigger from GitHub UI: Actions → Build and Push App → Run workflow
+```

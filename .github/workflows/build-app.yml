@@ -1,0 +1,119 @@
+name: Build and Push App
+
+on:
+  push:
+    branches: [main, upgraded-versions]
+    paths:
+      - 'apps/**/Dockerfile'
+      - 'apps/**/src/**'
+  workflow_dispatch:
+    inputs:
+      app_name:
+        description: 'App name (folder under apps/)'
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: write
+
+env:
+  AWS_REGION: eu-west-1
+
+jobs:
+  detect-apps:
+    name: Detect Changed Apps
+    runs-on: ubuntu-latest
+    outputs:
+      apps: ${{ steps.detect.outputs.apps }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect changed apps
+        id: detect
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            # Manual trigger - use input
+            echo "apps=[\"${{ inputs.app_name }}\"]" >> $GITHUB_OUTPUT
+          else
+            # Push trigger - detect from changed files
+            CHANGED_APPS=$(git diff --name-only HEAD~1 HEAD | grep '^apps/' | cut -d'/' -f2 | sort -u | jq -R -s -c 'split("\n") | map(select(length > 0))')
+            echo "apps=$CHANGED_APPS" >> $GITHUB_OUTPUT
+          fi
+          echo "Detected apps: $CHANGED_APPS"
+
+  build:
+    name: Build ${{ matrix.app }}
+    needs: detect-apps
+    if: needs.detect-apps.outputs.apps != '[]' && needs.detect-apps.outputs.apps != ''
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app: ${{ fromJson(needs.detect-apps.outputs.apps) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check if Dockerfile exists
+        id: check
+        run: |
+          if [ -f "apps/${{ matrix.app }}/Dockerfile" ]; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "No Dockerfile found for ${{ matrix.app }}, skipping"
+          fi
+
+      - name: Configure AWS credentials
+        if: steps.check.outputs.exists == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        if: steps.check.outputs.exists == 'true'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Create ECR repository if not exists
+        if: steps.check.outputs.exists == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          aws ecr describe-repositories --repository-names ${{ matrix.app }} 2>/dev/null || \
+          aws ecr create-repository \
+            --repository-name ${{ matrix.app }} \
+            --image-scanning-configuration scanOnPush=true \
+            --image-tag-mutability IMMUTABLE
+
+      - name: Build and push Docker image
+        if: steps.check.outputs.exists == 'true'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          docker build -t $ECR_REGISTRY/${{ matrix.app }}:$SHORT_SHA apps/${{ matrix.app }}/
+          docker push $ECR_REGISTRY/${{ matrix.app }}:$SHORT_SHA
+          echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_ENV
+
+      - name: Update values.yaml with new image tag
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          VALUES_FILE="apps/${{ matrix.app }}/charts/values.yaml"
+          if [ -f "$VALUES_FILE" ]; then
+            sed -i "s/  tag: .*/  tag: \"$SHORT_SHA\"/" $VALUES_FILE
+          fi
+
+      - name: Commit and push updated values
+        if: steps.check.outputs.exists == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add apps/${{ matrix.app }}/charts/values.yaml 2>/dev/null || true
+          git diff --staged --quiet || git commit -m "ci: update ${{ matrix.app }} image tag to ${GITHUB_SHA::7}"
+          git push || echo "Nothing to push"
