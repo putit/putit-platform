@@ -2,10 +2,16 @@ name: Build and Push echo-server
 
 on:
   push:
-    branches: [main]
+    branches: [main, upgraded-versions]
     paths:
       - 'apps/echo-server/Dockerfile'
       - 'apps/echo-server/src/**'
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Branch to build from'
+        required: false
+        default: 'upgraded-versions'
 
 permissions:
   id-token: write
@@ -23,6 +29,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch || github.ref }}
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4

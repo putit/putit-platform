@@ -27,7 +27,7 @@ inputs = {
   cluster_endpoint            = dependency.eks-cluster.outputs.cluster_endpoint
   environment = local.environment
   environments_list = [local.environment]
-  default_namespace_target = "apps"
+  default_namespace_target = local.environment
   app_repo_url = "https://github.com/putit/putit-platform.git"
   target_revision = "upgraded-versions"
 }
