@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: 363685691972.dkr.ecr.eu-west-1.amazonaws.com/echo-server
-  tag: "0.1.0"
+  tag: "c91de32"
   pullPolicy: IfNotPresent
 
 service:
