@@ -27,7 +27,7 @@ inputs = {
   cluster_endpoint            = dependency.eks-cluster.outputs.cluster_endpoint
   environment = local.environment
   environments_list = [local.environment]
-  default_namespace_target = "technipfmc"
-  app_repo_url = "git@github.com:tfmcdigital/k8s-poc-demo-app.git"
-  target_revision = "HEAD"
+  default_namespace_target = local.environment
+  app_repo_url = "https://github.com/putit/putit-platform.git"
+  target_revision = "upgraded-versions"
 }

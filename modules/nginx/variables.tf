@@ -5,7 +5,7 @@ variable "region" {
 
 variable "root_domain" {
   type        = string
-  default     = "services.technipfmc.com"
+  default     = "putit.io"
 }
 
 variable "namespace" {

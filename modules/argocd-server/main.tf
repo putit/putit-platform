@@ -53,7 +53,7 @@ resource "helm_release" "argocd" {
   }
 
   set {
-    name  = "server.ingress.annotations.hosts[0]"
+    name  = "server.ingress.hostname"
     value = local.web_domain
   }
 
@@ -68,7 +68,7 @@ resource "helm_release" "argocd" {
   }
 
   set {
-    name  = "server.ingressGrpc.annotations.hosts[0]"
+    name  = "server.ingressGrpc.hostname"
     value = local.argocd_grpc_domain
   }
 
@@ -86,6 +86,51 @@ resource "helm_release" "argocd" {
   depends_on = [kubernetes_namespace.argocd]
 }
 
-# please then register the cluster. 
-# ArgoCD creats SA, token and role for its self
-#  argocd cluster add --yes <CLUSTER_NAME>
+# GitHub App credentials for ArgoCD repo access
+data "aws_secretsmanager_secret_version" "github_app_key" {
+  count     = var.deploy && var.github_app_private_key_secret_name != "" ? 1 : 0
+  secret_id = var.github_app_private_key_secret_name
+}
+
+resource "kubernetes_secret" "argocd_github_app_creds" {
+  count = var.deploy && var.github_app_private_key_secret_name != "" ? 1 : 0
+
+  metadata {
+    name      = "argocd-github-app-creds"
+    namespace = var.namespace
+    labels = {
+      "argocd.argoproj.io/secret-type" = "repo-creds"
+    }
+  }
+
+  data = {
+    type                    = "git"
+    url                     = "https://github.com/${var.github_org}"
+    githubAppID             = var.github_app_id
+    githubAppInstallationID = var.github_app_installation_id
+    githubAppPrivateKey     = data.aws_secretsmanager_secret_version.github_app_key[0].secret_string
+  }
+
+  depends_on = [kubernetes_namespace.argocd]
+}
+
+# Store ArgoCD admin password in AWS Secrets Manager for retrieval without kubectl
+data "kubernetes_secret" "argocd_admin" {
+  count = var.deploy ? 1 : 0
+  metadata {
+    name      = "argocd-initial-admin-secret"
+    namespace = var.namespace
+  }
+  depends_on = [helm_release.argocd]
+}
+
+resource "aws_secretsmanager_secret" "argocd_admin" {
+  count = var.deploy ? 1 : 0
+  name  = "${var.environment}/argocd-admin-password"
+}
+
+resource "aws_secretsmanager_secret_version" "argocd_admin" {
+  count         = var.deploy ? 1 : 0
+  secret_id     = aws_secretsmanager_secret.argocd_admin[0].id
+  secret_string = data.kubernetes_secret.argocd_admin[0].data["password"]
+}

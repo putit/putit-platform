@@ -1,5 +1,10 @@
 locals {
   cluster_name     = "${var.cluster_name_prefix}-${var.environment}"
+  ami_id           = var.ami_id != "" ? var.ami_id : data.aws_ssm_parameter.eks_ami.value
+}
+
+data "aws_ssm_parameter" "eks_ami" {
+  name = "/aws/service/eks/optimized-ami/${var.cluster_version}/amazon-linux-2/recommended/image_id"
 }
 
 module "irsa_role_ebs_addon" {
@@ -108,7 +113,7 @@ module "eks" {
       max_size     = 4
       desired_size = 2
 
-      ami_id = "ami-0f3eb923c80e02952"
+      ami_id = local.ami_id
 
       instance_type = "t3.large"
 

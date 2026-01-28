@@ -12,6 +12,6 @@ dependency "eks-cluster" {
 }
 
 inputs = {
-  default_namespace = [include.root.inputs.environment]
-  cluster_name            = dependency.eks-cluster.outputs.cluster_name
+  namespaces   = ["putit", "monitoring", "logging", include.root.inputs.environment]
+  cluster_name = dependency.eks-cluster.outputs.cluster_name
 }

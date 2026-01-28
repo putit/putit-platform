@@ -1,11 +1,11 @@
 variable "chart_version" {
   type = string
-  default = "1.8.1"
+  default = "3.0.0"
 }
 
 variable "app_version" {
   type = string
-  default = "v2.8.1"
+  default = "v3.0.0"
   description = "Should match version for the chart."
 }
 

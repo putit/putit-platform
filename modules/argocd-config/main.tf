@@ -1,9 +1,31 @@
 locals {
   # if any env would have more than one cluster, add it here
+  # Use in-cluster URL since ArgoCD runs inside the cluster
   cluster_map = {
-    "${var.cluster_name}" = var.cluster_endpoint
+    "${var.cluster_name}" = "https://kubernetes.default.svc"
   }
-  cluster_base_name = replace(var.cluster_name, "-${var.environment}", "")
+  cluster_base_name = trimsuffix(var.cluster_name, "-${var.environment}")
+}
+
+# Declarative cluster registration — replaces manual `argocd cluster add`
+resource "kubernetes_secret" "argocd_cluster" {
+  metadata {
+    name      = var.cluster_name
+    namespace = var.argocd_namespace
+    labels = {
+      "argocd.argoproj.io/secret-type" = "cluster"
+    }
+  }
+
+  data = {
+    name   = var.cluster_name
+    server = "https://kubernetes.default.svc"
+    config = jsonencode({
+      tlsClientConfig = {
+        insecure = false
+      }
+    })
+  }
 }
 
 data aws_eks_cluster cluster {
@@ -96,7 +118,7 @@ resource "argocd_application_set" "git_directories" {
             revision = var.target_revision
 
             directory {
-              path = "chart/*"
+              path = "apps/*"
             }
           }
         }
@@ -126,7 +148,7 @@ resource "argocd_application_set" "git_directories" {
         source {
           repo_url        = var.app_repo_url
           target_revision = var.target_revision
-          path            = "{{path}}"
+          path            = "{{path}}/charts"
           helm {
             value_files = ["values-${each.key}.yaml"]
             release_name = "{{path.basename}}"
@@ -150,4 +172,6 @@ resource "argocd_application_set" "git_directories" {
       }
     }
   }
+
+  depends_on = [argocd_project.project_per_env]
 }

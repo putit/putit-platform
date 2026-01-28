@@ -1,100 +1,284 @@
-# Overview
+# putit-platform
 
-- EKS cluster deployed into VPC
-- application installed on the cluster
-  - aws-loadbalancer-controller - to spin up ALB for traefik ingress
-  - traefik - which behaves as an ingress
-  - nginx - which is our demo app behind dsi-gateway
-  - argocd - for the future to prove that we can make it working with Github action in cicd
-  - external-dns - manage DNS in route53 for both domains technipfmc.com and .service
-  - external-secret - allows POD to obtain secrets from AWS Secret Manager
+EKS cluster deployed into VPC with supporting services managed via Terraform/Terragrunt.
 
-# TODO
- - move default namespace to be a === environment,
- - check argocd server and config and add github discovery generator
- - add monitoring with promethues stack and grafana
- - add opensearch module and logs
+## Components
 
+- **EKS Cluster** — Kubernetes v1.30, self-managed node groups, EBS CSI driver, IRSA
+- **AWS Load Balancer Controller** — provisions ALBs for ingress
+- **Traefik** — ingress controller behind dual ALB (internal + public)
+- **External-DNS** — manages DNS records in Route53
+- **External-Secrets** — syncs AWS Secrets Manager secrets to Kubernetes
+- **Secrets Store CSI Driver** — mounts secrets as volumes
+- **Karpenter** — auto-scales nodes based on workload demand
+- **ArgoCD** — GitOps continuous delivery with GitHub integration
+- **Monitoring** — kube-prometheus-stack (Prometheus, Grafana, AlertManager, node-exporter, kube-state-metrics)
+- **Logging** — Grafana Loki (log storage) + Grafana Alloy (log collector DaemonSet)
+- **ECR** — container registry per app (immutable tags, scan on push)
+- **Nginx** — demo application
+- **Echo-Server** — demo app deployed via ArgoCD + GitHub Actions CI/CD
 
-## Repo strucutre
+## Repo Structure
 
 ```
-├── charts
-│   ├── nginx
-│   │   ├── charts
-│   │   └── templates
-│   └── traefik
-│       ├── charts
-│       └── templates
-├── modules
-│   ├── argocd-config
-│   ├── argocd-server
-│   │   └── values
-│   ├── eks
-│   │   └── policies
-│   │       └── v2.7.1
-│   ├── external-dns
-│   │   ├── policies
-│   │   └── values
-│   ├── helm-hash
-│   ├── iam
-│   │   └── policies
-│   ├── k8s-namespaces
-│   ├── nginx
-│   │   └── values
-│   ├── traefik-ingress
-│   │   ├── policies
-│   │   └── values
-│   └── vpc
-└── tenant
-    └── k8s
-        └── eu-west-1
-            └── sandbox
-                ├── eks
-                │   ├── argocd-config
-                │   ├── argocd-server
-                │   ├── aws-load-balancer-controller
-                │   ├── cluster
-                │   ├── data
-                │   ├── external-dns
-                │   ├── namespaces
-                │   ├── nginx
-                │   └── traefik-ingress
-                ├── iam
-                └── vpc
+├── .github/workflows/       # CI/CD pipelines (plan on PR, apply on merge, app builds)
+├── apps/                    # Dockerized applications with Helm charts (ArgoCD auto-discovers)
+│   ├── example/             # Template app — copy this to create new apps
+│   │   ├── Dockerfile
+│   │   └── charts/          # Helm chart (values.yaml, templates/)
+│   └── echo-server/
+│       ├── Dockerfile
+│       └── charts/
+├── charts/                  # Local Helm chart wrappers with extra templates
+│   ├── nginx/
+│   └── traefik/
+├── modules/                 # Terraform modules (called by Terragrunt)
+│   ├── argocd-config/
+│   ├── argocd-server/
+│   ├── ecr/
+│   ├── aws-load-balancer-controller/
+│   ├── eks/
+│   ├── external-dns/
+│   ├── external-secret/
+│   ├── helm-hash/
+│   ├── iam/
+│   ├── k8s-namespaces/
+│   ├── karpenter/
+│   ├── logging/
+│   ├── monitoring/
+│   ├── nginx/
+│   ├── secret-manager/
+│   ├── traefik-ingress/
+│   └── vpc/
+├── scripts/                 # Operational scripts
+│   └── bootstrap-state.sh   # Create S3 bucket + DynamoDB for TF state
+└── tenant/                  # Terragrunt environment configs
+    └── k8s/
+        └── eu-west-1/
+            └── sandbox/
 ```
 
-### Charts 
-Here are some addiontal templates the the open source charts. 
+## Prerequisites
 
-### Modules
-Terraform code, which should be versioned outside main repository. Those modules are being called by terragrunt.
+- AWS CLI configured with appropriate credentials
+- Terraform >= 1.9
+- Terragrunt >= 0.68
+- kubectl
+- Helm 3
 
-### Tenant
-Name of the logical group of environments.
+## Bootstrap (New Account)
 
-## Usage
+Create the S3 state bucket and DynamoDB lock table:
 
-To provsion the EKS cluster we have to run terragrunt command AFTER ginger has been applied.
-```
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/vpc apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/data apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/cluster apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/iam apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/external-dns apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/aws-load-balancer-controller apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/traefik-ingress apply
-terragrunt --terragrunt-working-dir=tenant/k8s/eu-west-1/sandbox/eks/nginx apply
+```bash
+./scripts/bootstrap-state.sh eu-west-1
 ```
 
-Update your kubeconfig, by adding the cluster into it.
+## Pre-Deployment Secrets
 
-Get the cluster name
-```
-aws eks list-clusters --profile $AWS_PROFILE --region $AWS_REGION
+Before deploying ArgoCD, store the GitHub App private key in AWS Secrets Manager:
+
+```bash
+aws secretsmanager create-secret \
+  --name "sandbox/argocd-github-app-private-key" \
+  --secret-string file://path/to/github-app-private-key.pem \
+  --region eu-west-1
 ```
 
-Add the cluster to the kubeconfig
+The ArgoCD module reads this secret during `terraform apply` and creates a Kubernetes secret with the proper ArgoCD labels. The IAM role used for Terraform execution (both local and CI) needs `secretsmanager:GetSecretValue` on this secret.
+
+## Deployment Order
+
+Apply modules in this order for a new cluster:
+
+```bash
+# 1. VPC
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/vpc apply
+
+# 2. Data (Route53 zone lookup + ACM wildcard certificate)
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/data apply
+
+# 3. EKS Cluster
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/cluster apply
+
+# 4. Namespaces
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/namespaces apply
+
+# 5. IAM
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/iam apply
+
+# 6. AWS Load Balancer Controller
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/aws-load-balancer-controller apply
+
+# 7. External DNS
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/external-dns apply
+
+# 8. Traefik Ingress
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/traefik-ingress apply
+
+# 9. External Secrets
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/external-secret apply
+
+# 10. Secret Manager (CSI Driver)
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/secret-manager apply
+
+# 11. Karpenter
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/karpenter apply
+
+# 12. Monitoring (Prometheus + Grafana)
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/monitoring apply
+
+# 13. Logging (Loki + Alloy)
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/logging apply
+
+# 14. ArgoCD Server
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-server apply
+
+# 15. ArgoCD Config (requires ArgoCD admin password)
+export TF_VAR_argocd_admin_password="$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-config apply
+
+# 16. Nginx (demo app)
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/nginx apply
+
+# 17. ECR (container registries for apps)
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/ecr apply
 ```
-aws eks update-kubeconfig --region $AWS_REGION --name <CLUSTER_NAME>
+
+Or use `terragrunt run-all` from the sandbox root (dependency graph is respected):
+
+```bash
+terragrunt run-all apply --working-dir tenant/k8s/eu-west-1/sandbox --non-interactive
 ```
+
+## Post-Deployment
+
+Update kubeconfig:
+
+```bash
+aws eks list-clusters --region eu-west-1
+aws eks update-kubeconfig --region eu-west-1 --name <CLUSTER_NAME>
+```
+
+Retrieve ArgoCD admin password:
+
+```bash
+# From Kubernetes
+kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d
+
+# From AWS Secrets Manager (if deployed)
+aws secretsmanager get-secret-value --secret-id sandbox/argocd-admin-password --query SecretString --output text
+```
+
+Access Grafana:
+
+```bash
+kubectl -n monitoring port-forward svc/kube-prometheus-stack-grafana 3000:80
+# Default credentials: admin / admin (change on first login)
+```
+
+Verify logs in Grafana:
+- Open Grafana > Explore > Select Loki datasource
+- Query: `{namespace="default"}`
+
+## Deploying Apps
+
+Apps live in `apps/<name>/` with a Dockerfile and Helm chart. ArgoCD auto-discovers them via the git directory generator.
+
+**Traffic flow:** Route53 → ALB (ACM TLS) → Traefik (NodePort) → IngressRoute → Service → Pod
+
+### CI/CD Flow
+
+1. Push changes to `apps/<name>/Dockerfile` or `apps/<name>/src/`
+2. GitHub Actions builds Docker image and pushes to ECR
+3. Workflow updates `image.tag` in `apps/<name>/charts/values.yaml` and commits
+4. ArgoCD detects the change and syncs
+
+### Adding a New App
+
+1. Copy `apps/example/` to `apps/<name>/`
+2. Update `charts/Chart.yaml` — set `name` to your app name
+3. Update `charts/values.yaml` — set `image.repository`, `containerPort`, `ingress.host`
+4. Create `charts/values-<env>.yaml` for each environment (e.g., `values-sandbox.yaml`)
+5. Update `Dockerfile` for your app
+6. Add name to `tenant/.../ecr/terragrunt.hcl` `app_names` list
+7. Add name to `tenant/.../iam/terragrunt.hcl` `services` list
+8. Add `.github/workflows/build-<name>.yml`
+9. Apply ECR + IAM modules, push — ArgoCD auto-discovers
+
+## Adding a New Environment
+
+1. Create `tenant/k8s/<region>/<env-name>/env.hcl` with environment name
+2. Copy the sandbox terragrunt structure
+3. Update inputs as needed for the new environment
+4. Run `bootstrap-state.sh` if using a new AWS account
+
+## Adding Clusters to ApplicationSet
+
+ArgoCD ApplicationSets can deploy apps to multiple clusters. To add a new cluster as a target:
+
+### 1. Register the cluster in ArgoCD
+
+Create a Kubernetes secret with cluster credentials in the `argocd` namespace:
+
+```bash
+# For in-cluster (same cluster as ArgoCD)
+kubectl create secret generic <cluster-name> -n argocd \
+  --from-literal=name=<cluster-name> \
+  --from-literal=server=https://kubernetes.default.svc \
+  --from-literal=config='{"tlsClientConfig":{"insecure":false}}'
+kubectl label secret <cluster-name> -n argocd argocd.argoproj.io/secret-type=cluster
+
+# For external clusters, include full credentials:
+kubectl create secret generic <cluster-name> -n argocd \
+  --from-literal=name=<cluster-name> \
+  --from-literal=server=https://<cluster-api-endpoint> \
+  --from-literal=config='{"bearerToken":"<token>","tlsClientConfig":{"insecure":false,"caData":"<base64-ca>"}}'
+kubectl label secret <cluster-name> -n argocd argocd.argoproj.io/secret-type=cluster
+```
+
+### 2. Update the cluster_map in argocd-config module
+
+Edit `modules/argocd-config/main.tf`:
+
+```hcl
+locals {
+  cluster_map = {
+    "k8s-sandbox-sandbox" = "https://kubernetes.default.svc"
+    "k8s-prod-prod"       = "https://kubernetes.default.svc"  # or external endpoint
+  }
+}
+```
+
+### 3. Add environment to the ApplicationSet
+
+Edit `tenant/.../argocd-config/terragrunt.hcl`:
+
+```hcl
+inputs = {
+  environments_list = ["sandbox", "prod"]
+  # ...
+}
+```
+
+### 4. Create environment-specific values files
+
+For each app, create `values-<env>.yaml`:
+
+```bash
+touch apps/<app-name>/charts/values-prod.yaml
+```
+
+### 5. Re-apply argocd-config
+
+```bash
+terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-config apply
+```
+
+The ApplicationSet will automatically deploy apps to all clusters in `environments_list`.
+
+## CI/CD
+
+- **Pull Requests**: `terragrunt plan` runs automatically for changed modules
+- **Merge to main**: `terragrunt apply` runs automatically
+- Configure `AWS_ROLE_ARN` secret in GitHub repository settings

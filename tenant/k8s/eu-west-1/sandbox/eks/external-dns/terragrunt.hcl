@@ -24,7 +24,7 @@ dependency "data" {
 inputs = {
   cluster_name              = dependency.eks-cluster.outputs.cluster_name
   deploy                    = true
-  chart_version             = "7.0.0"
+  chart_version             = "1.20.0"
   environment               = local.environment
   namespace                 = local.environment
   cluster_oidc_provider_arn = dependency.eks-cluster.outputs.cluster_oidc_provider_arn

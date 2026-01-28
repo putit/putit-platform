@@ -16,5 +16,5 @@ locals {
 inputs = {
   region = include.root.inputs.region
   aws_account_id = include.root.inputs.aws_account_id
-  services = ["nginx", "k8s-poc-demo-app"]
+  services = ["nginx", "echo-server"]
 }

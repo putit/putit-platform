@@ -42,3 +42,21 @@ variable "cluster_oidc_provider_arn" {
   type        = string
   description = "OIDC provider arn"
 }
+
+variable "karpenter_instance_types" {
+  type        = list(string)
+  default     = ["t3.large", "t3.xlarge"]
+  description = "Instance types allowed for Karpenter NodePool"
+}
+
+variable "karpenter_cpu_limit" {
+  type        = string
+  default     = "120"
+  description = "CPU limit for Karpenter NodePool"
+}
+
+variable "karpenter_memory_limit" {
+  type        = string
+  default     = "120Gi"
+  description = "Memory limit for Karpenter NodePool"
+}

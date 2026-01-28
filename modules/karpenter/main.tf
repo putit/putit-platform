@@ -50,7 +50,7 @@ resource "helm_release" "karpenter" {
 
   set {
     name  = "settings.clusterName"
-    value = "k8s-sandbox-sandbox"
+    value = var.cluster_name
   }
 
   set {
@@ -137,7 +137,7 @@ resource "time_sleep" "wait_for_karpenter" {
 
 resource "kubectl_manifest" "karpenter_nodepool" {
   yaml_body = <<-YAML
-    apiVersion: karpenter.sh/v1beta1
+    apiVersion: karpenter.sh/v1
     kind: NodePool
     metadata:
       name: ${helm_release.karpenter.name}
@@ -153,30 +153,34 @@ resource "kubectl_manifest" "karpenter_nodepool" {
               values: ["on-demand"]
             - key: "node.kubernetes.io/instance-type"
               operator: In
-              values: ["t3.large","t3.xlarge"]
+              values: ${jsonencode(var.karpenter_instance_types)}
           nodeClassRef:
+            group: karpenter.k8s.aws
+            kind: EC2NodeClass
             name: ${helm_release.karpenter.name}
       limits:
-        cpu: "120"
-        memory: 120Gi
+        cpu: "${var.karpenter_cpu_limit}"
+        memory: ${var.karpenter_memory_limit}
       disruption:
-        consolidationPolicy: WhenUnderutilized
+        consolidationPolicy: WhenEmptyOrUnderutilized
+        consolidateAfter: 1m
         expireAfter: 720h # 30 * 24h = 720h
   YAML
 
   depends_on = [
-    time_sleep.wait_for_karpenter   # This will wait for the specified time before applying the manifest
+    time_sleep.wait_for_karpenter
   ]
 }
 
 resource "kubectl_manifest" "karpenter_ec2nodeclass" {
   yaml_body = <<-YAML
-    apiVersion: karpenter.k8s.aws/v1beta1
+    apiVersion: karpenter.k8s.aws/v1
     kind: EC2NodeClass
     metadata:
       name: ${helm_release.karpenter.name}
     spec:
-      amiFamily: AL2 # Amazon Linux 2
+      amiSelectorTerms:
+        - alias: al2@latest
       role: self-managed-node-group-complete-example
       subnetSelectorTerms:
         - tags:
@@ -187,6 +191,6 @@ resource "kubectl_manifest" "karpenter_ec2nodeclass" {
   YAML
 
   depends_on = [
-    time_sleep.wait_for_karpenter   # Delay manifest creation until Karpenter service is ready
+    time_sleep.wait_for_karpenter
   ]
 }

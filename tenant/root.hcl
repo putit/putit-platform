@@ -27,15 +27,16 @@ generate "provider" {
 # default provider versions
 terraform {
    required_providers {
-        aws = "~> 5.0"
-        kubernetes = "~> 2.0"
+        aws = "~> 5.82"
+        kubernetes = "~> 2.35"
+        helm = "~> 2.17"
         argocd = {
           source = "oboukili/argocd"
-          version = "~> 6.0"
+          version = "~> 6.2"
         }
         kubectl = {
           source  = "gavinbunney/kubectl"
-          version = ">= 1.7.0"
+          version = "~> 1.18"
        }
     }
 }
@@ -68,11 +69,18 @@ provider "aws" {
   allowed_account_ids = ["${local.aws_account_id}"]
 }
 
-# all params should come from exported env var.
-# ARGOCD_SERVER=argocd.sandbox.k8s.services.technipfmc.com:443
-# ARGOCD_AUTH_TOKEN="secret"
-# ARGOCD_OPTS="--grpc-web"
-provider "argocd" {}
+provider "argocd" {
+  server_addr = "argocd.sandbox.k8s.putit.io:443"
+  grpc_web    = true
+  username    = "admin"
+  password    = var.argocd_admin_password
+}
+
+variable "argocd_admin_password" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
 EOF
 }
 
