@@ -20,8 +20,8 @@ service:
   port: 80
 
 ingress:
-  # Route53 → ALB (ACM TLS) → Traefik (NodePort) → IngressRoute → Service → Pod
+  # Route53 → ALB (ACM TLS) → Traefik (NodePort) → Ingress → Service → Pod
   # Change this to your app's FQDN under the wildcard cert: *.sandbox.k8s.putit.io
   host: example.sandbox.k8s.putit.io
-  entryPoints:
-    - websecure
+  # Target for external-dns CNAME record (traefik public ALB)
+  target: traefik-pub-k8s.sandbox.k8s.putit.io
