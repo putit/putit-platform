@@ -28,6 +28,6 @@ inputs = {
   environment = local.environment
   environments_list = [local.environment]
   default_namespace_target = "apps"
-  app_repo_url = "git@github.com:putit/putit-platform.git"
+  app_repo_url = "https://github.com/putit/putit-platform.git"
   target_revision = "HEAD"
 }

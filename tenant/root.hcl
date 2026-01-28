@@ -69,11 +69,18 @@ provider "aws" {
   allowed_account_ids = ["${local.aws_account_id}"]
 }
 
-# all params should come from exported env var.
-# ARGOCD_SERVER=argocd.sandbox.k8s.putit.io:443
-# ARGOCD_AUTH_TOKEN="secret"
-# ARGOCD_OPTS="--grpc-web"
-provider "argocd" {}
+provider "argocd" {
+  server_addr = "argocd.sandbox.k8s.putit.io:443"
+  grpc_web    = true
+  username    = "admin"
+  password    = var.argocd_admin_password
+}
+
+variable "argocd_admin_password" {
+  type      = string
+  default   = ""
+  sensitive = true
+}
 EOF
 }
 

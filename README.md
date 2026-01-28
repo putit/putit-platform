@@ -134,7 +134,8 @@ terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/logging apply
 # 14. ArgoCD Server
 terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-server apply
 
-# 15. ArgoCD Config
+# 15. ArgoCD Config (requires ArgoCD admin password)
+export TF_VAR_argocd_admin_password="$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d)"
 terragrunt --working-dir tenant/k8s/eu-west-1/sandbox/eks/argocd-config apply
 
 # 16. Nginx (demo app)

@@ -171,4 +171,6 @@ resource "argocd_application_set" "git_directories" {
       }
     }
   }
+
+  depends_on = [argocd_project.project_per_env]
 }
