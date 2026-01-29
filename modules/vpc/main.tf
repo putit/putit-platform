@@ -21,6 +21,6 @@ module "vpc" {
   private_subnet_tags = {
     Name                       = "private-subnet"
     Terraform                  = "true"
-    "karpenter.sh/discovery"   = "k8s-sandbox-sandbox"
+    "karpenter.sh/discovery"   = var.cluster_name
   }
 }

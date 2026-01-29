@@ -65,6 +65,100 @@ EKS cluster deployed into VPC with supporting services managed via Terraform/Ter
 - Terragrunt >= 0.68
 - kubectl
 - Helm 3
+- GitHub CLI (`gh`) — for workflow management
+
+## New AWS Account / Domain Setup
+
+To deploy this platform to a new AWS account with a new domain, follow these steps:
+
+### 1. Domain & Route53 Setup
+
+Create a Route53 hosted zone for your domain (if not already exists):
+
+```bash
+aws route53 create-hosted-zone --name yourdomain.com --caller-reference $(date +%s)
+```
+
+Note the hosted zone ID and update your domain registrar with the NS records from Route53.
+
+### 2. Update Configuration Files
+
+#### `tenant/k8s/account.hcl`
+```hcl
+locals {
+  account_name   = basename("${get_terragrunt_dir()}")
+  aws_account_id = "${get_aws_account_id()}"
+  tenant         = local.account_name
+  root_domain    = "yourdomain.com"  # ← Change this
+}
+```
+
+#### `tenant/k8s/backend.hcl`
+```hcl
+locals {
+  region         = "eu-west-1"  # ← Your preferred region
+  bucket         = "your-project-tf-state-${get_aws_account_id()}"  # ← Change prefix
+  dynamodb_table = "your-project-tf-state-${get_aws_account_id()}"  # ← Change prefix
+  encrypt        = true
+}
+```
+
+#### `tenant/root.hcl` — ArgoCD Provider
+Update the hardcoded ArgoCD domain (line ~73):
+```hcl
+provider "argocd" {
+  server_addr = "argocd.<environment>.<tenant>.<your-domain>:443"  # e.g., argocd.sandbox.k8s.yourdomain.com:443
+  grpc_web    = true
+  username    = "admin"
+  password    = var.argocd_admin_password
+}
+```
+
+### 3. Update Module Variables
+
+These modules have default values you may want to override in terragrunt.hcl files:
+
+| Module | Variable | Current Default |
+|--------|----------|-----------------|
+| `modules/iam` | `github_org` | `putit` |
+| `modules/iam` | `github_repo` | `putit-platform` |
+| `modules/eks` | `tenant` | `putit` |
+| `modules/vpc` | Karpenter discovery tag | hardcoded |
+
+For GitHub Actions OIDC, update `modules/iam/variables.tf` or pass via terragrunt inputs:
+```hcl
+inputs = {
+  github_org  = "your-github-org"
+  github_repo = "your-repo-name"
+}
+```
+
+### 4. Update App Values
+
+For each app in `apps/<name>/charts/values.yaml`:
+- Update `image.repository` with your AWS account ID and region
+- Update `ingress.host` with your domain
+- Update `ingress.target` with your traefik ALB hostname
+
+Example for `apps/echo-server/charts/values.yaml`:
+```yaml
+image:
+  repository: <YOUR-ACCOUNT-ID>.dkr.ecr.<REGION>.amazonaws.com/echo-server
+
+ingress:
+  host: echo-server.<env>.<tenant>.<your-domain>
+  target: traefik-pub-<cluster-name>.<env>.<tenant>.<your-domain>
+```
+
+### 5. Bootstrap State Backend
+
+```bash
+./scripts/bootstrap-state.sh <region>
+```
+
+### 6. Deploy Infrastructure
+
+Follow the deployment order in the next section.
 
 ## Bootstrap (New Account)
 
@@ -185,7 +279,7 @@ Verify logs in Grafana:
 
 Apps live in `apps/<name>/` with a Dockerfile and Helm chart. ArgoCD auto-discovers them via the git directory generator.
 
-**Traffic flow:** Route53 → ALB (ACM TLS) → Traefik (NodePort) → IngressRoute → Service → Pod
+**Traffic flow:** Route53 → ALB (ACM TLS) → Traefik (NodePort) → Ingress → Service → Pod
 
 ### CI/CD Flow
 
@@ -290,11 +384,21 @@ The ApplicationSet will automatically deploy apps to all clusters in `environmen
 
 ### Application Build Workflows
 
-App images are built and pushed to ECR when changes are pushed to `apps/<name>/`. The workflow:
-1. Builds Docker image
-2. Pushes to ECR with commit SHA tag
-3. Updates `values.yaml` with new image tag
-4. ArgoCD detects change and syncs
+App images are built and pushed to ECR when changes are pushed to `apps/<name>/`.
+
+| Trigger | Build & Push | Update values.yaml |
+|---------|-------------|-------------------|
+| Pull Request | ✅ | ❌ |
+| Merge to main | ✅ | ✅ |
+| Manual (workflow_dispatch) | ✅ | ✅ |
+
+The workflow:
+1. Detects which apps changed (or uses manual input)
+2. Creates ECR repository if it doesn't exist
+3. Builds Docker image
+4. Pushes to ECR with commit SHA tag
+5. (main only) Updates `values.yaml` with new image tag and commits
+6. ArgoCD detects change and syncs
 
 ### Setting Up GitHub Actions AWS Access
 
@@ -318,7 +422,7 @@ GitHub Actions uses OIDC to assume an IAM role — no long-term credentials need
 
 4. **Trigger a workflow** manually or push to trigger automatically:
    ```bash
-   gh workflow run build-echo-server.yml --ref upgraded-versions
+   gh workflow run build-app.yml -f app_name=echo-server
    ```
 
 ### Manual Workflow Trigger

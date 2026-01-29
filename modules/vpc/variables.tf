@@ -36,3 +36,8 @@ variable "azs" {
   type        = list(string)
   default     = []
 }
+
+variable "cluster_name" {
+  description = "EKS cluster name for Karpenter subnet discovery tag"
+  type        = string
+}

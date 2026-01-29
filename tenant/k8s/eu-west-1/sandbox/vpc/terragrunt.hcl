@@ -12,10 +12,12 @@ locals {
   region           = include.root.inputs.region
   aws_account_id   = include.root.inputs.aws_account_id
   azs              = include.root.inputs.azs
+  tenant           = include.root.inputs.tenant
 }
 
 inputs = {
-  name = "vpc-${local.environment}"
+  name         = "vpc-${local.environment}"
+  cluster_name = "${local.tenant}-${local.environment}"
   cidr = "10.42.0.0/16"
 
   azs             = local.azs
