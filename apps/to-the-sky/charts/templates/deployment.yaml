@@ -14,6 +14,37 @@ spec:
       labels:
         app: {{ .Chart.Name }}
     spec:
+      initContainers:
+        - name: {{ .Chart.Name }}-migration
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          command: ["npm"]
+          args: ["run", "migrate"]
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 5789
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+          env:
+            - name: PORT
+              value: {{ .Values.env.PORT | quote }}
+            - name: DATABASE_HOST
+              value: {{ .Values.env.DATABASE_HOST | quote }}
+            - name: DATABASE_PORT
+              value: {{ .Values.env.DATABASE_PORT | quote }}
+            - name: DATABASE_NAME
+              value: {{ .Values.env.DATABASE_NAME | quote }}
+            - name: DATABASE_USERNAME
+              value: {{ .Values.env.DATABASE_USERNAME | quote }}
+            - name: DATABASE_PASSWORD
+              value: {{ .Values.env.DATABASE_PASSWORD | quote }}
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
