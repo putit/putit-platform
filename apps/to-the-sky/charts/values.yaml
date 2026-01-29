@@ -14,8 +14,8 @@ ingress:
 
 env:
   PORT: 5789
-  DATABASE_HOST: "example.com"
+  DATABASE_HOST: "commonprefix-sandbox.clbkqrpgcjyt.eu-west-1.rds.amazonaws.com"
   DATABASE_PORT: "5432"
   DATABASE_NAME: "commonprefix-sandbox"
-  DATABASE_USERNAME: "commonprefix-sandbox" 
-  DATABASE_PASSWORD: 'DB_54321'
+  DATABASE_USERNAME: "commonprefix" 
+  DATABASE_PASSWORD: "HYiM8F?c:!EatvJUBb8F|*>rI7*h"
