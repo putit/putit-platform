@@ -23,6 +23,8 @@ inputs = {
   azs             = local.azs
   private_subnets = ["10.42.1.0/24", "10.42.2.0/24", "10.42.3.0/24"]
   public_subnets  = ["10.42.101.0/24", "10.42.102.0/24", "10.42.103.0/24"]
+  database_subnets = ["10.42.11.0/24", "10.42.12.0/24", "10.42.13.0/24"]
+  database_subnet_group_name = "commonprefix-${local.environment}"
 
   enable_ipv6 = false
 

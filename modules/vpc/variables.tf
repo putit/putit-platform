@@ -41,3 +41,13 @@ variable "cluster_name" {
   description = "EKS cluster name for Karpenter subnet discovery tag"
   type        = string
 }
+
+variable "database_subnets" {
+  type = list(string)
+  default = []  
+}
+
+
+variable "database_subnet_group_name" {
+  type = string
+}

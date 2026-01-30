@@ -8,6 +8,14 @@ module "vpc" {
 
   private_subnets  = var.private_subnets
   public_subnets   = var.public_subnets
+  database_subnets    = var.database_subnets
+  database_subnet_group_name = var.database_subnet_group_name
+
+  create_database_subnet_group           = true
+  create_database_subnet_route_table     = true
+
+  enable_dns_hostnames = true
+  enable_dns_support   = true
 
   enable_ipv6        = var.enable_ipv6
   enable_nat_gateway = var.enable_nat_gateway
